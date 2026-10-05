@@ -1,0 +1,3 @@
+# DEV: Seite nicht indexieren — vor dem Go-live ersetzen
+User-agent: *
+Disallow: /
