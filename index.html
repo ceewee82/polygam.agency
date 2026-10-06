@@ -39,6 +39,36 @@
      P-Abstrich (x≈41/848) und y-Abstrich (x≈426/848) -> Mitte x≈234 = 27,5 %.
      Größe in cqw, damit er mit dem Logo skaliert. */
   .mark { position: relative; container-type: inline-size; width: clamp(240px, 52vw, 720px); }
+
+  /* ---- Buchstaben-Verwandlung (Hover) ----
+     Der Schriftzug ist in 7 Ebenen zerlegt (assets/letters/<x>.png, je in voller Logo-Größe,
+     nur ein Buchstabe sichtbar). .logo bleibt als unsichtbarer Platzhalter für die Größe.
+     .hit = Hover-Fläche (Rechteck um den Buchstaben), .morph = Canvas für den Clip
+     (assets/letters/<x>.mp4, schwarzer Grund wird beim Zeichnen transparent).
+     Positionen in % der Logo-Breite/-Höhe (848×292); das Clip-Quadrat entspricht der
+     1024er-Vorlage, in der der Buchstabe auf 70 % eingepasst und zentriert ist. */
+  h1 { position: relative; }
+  .logo { background: none; -webkit-mask: none; mask: none; }
+  .letter { position: absolute; inset: 0; background: #fff; transition: opacity .35s ease;
+    -webkit-mask: var(--m) center / contain no-repeat; mask: var(--m) center / contain no-repeat; }
+  .letter.is-morphing { opacity: 0; transition-duration: .05s; }
+  .hit { position: absolute; pointer-events: auto; }
+  .morph { position: absolute; aspect-ratio: 1; pointer-events: none; opacity: 0; transition: opacity .45s ease; }
+  .morph.is-on { opacity: 1; transition-duration: .05s; }
+  .hit[data-letter="p"]   { left: 0.71%; top: 21.58%; width: 27%; height: 60.96%; }
+  .morph[data-for="p"] { left: -5.08%; top: -3.96%; width: 38.58%; }
+  .hit[data-letter="o"]   { left: 30.19%; top: 27.74%; width: 11.44%; height: 28.42%; }
+  .morph[data-for="o"] { left: 27.74%; top: 18.22%; width: 16.34%; }
+  .hit[data-letter="l"]   { left: 43.51%; top: 2.05%; width: 10.73%; height: 54.45%; }
+  .morph[data-for="l"] { left: 35.49%; top: -9.61%; width: 26.79%; }
+  .hit[data-letter="y"]   { left: 50.24%; top: 19.52%; width: 13.8%; height: 78.42%; }
+  .morph[data-for="y"] { left: 37.85%; top: 2.72%; width: 38.58%; }
+  .hit[data-letter="g"]   { left: 61.91%; top: 25%; width: 13.09%; height: 63.36%; }
+  .morph[data-for="g"] { left: 52.87%; top: 11.42%; width: 31.17%; }
+  .hit[data-letter="a"]   { left: 75.59%; top: 27.74%; width: 9.55%; height: 29.79%; }
+  .morph[data-for="a"] { left: 73.04%; top: 21.36%; width: 14.66%; }
+  .hit[data-letter="m"]   { left: 87.03%; top: 27.05%; width: 12.26%; height: 35.27%; }
+  .morph[data-for="m"] { left: 84.4%; top: 19.25%; width: 17.52%; }
   @media (max-width: 600px) { .mark { width: 80vw; } }
   .note {
     position: absolute; left: 27.5%; bottom: 1.6%; transform: translateX(-50%);
@@ -62,7 +92,32 @@
 <div id="fade"></div>
 <main>
   <div class="mark">
-    <h1><span class="logo" role="img" aria-label="polygam"></span></h1>
+    <h1>
+      <span class="logo" role="img" aria-label="polygam"></span>
+      <span class="letter" data-letter="p" style="--m:url(assets/letters/p.png)" aria-hidden="true"></span>
+      <span class="letter" data-letter="o" style="--m:url(assets/letters/o.png)" aria-hidden="true"></span>
+      <span class="letter" data-letter="l" style="--m:url(assets/letters/l.png)" aria-hidden="true"></span>
+      <span class="letter" data-letter="y" style="--m:url(assets/letters/y.png)" aria-hidden="true"></span>
+      <span class="letter" data-letter="g" style="--m:url(assets/letters/g.png)" aria-hidden="true"></span>
+      <span class="letter" data-letter="a" style="--m:url(assets/letters/a.png)" aria-hidden="true"></span>
+      <span class="letter" data-letter="m" style="--m:url(assets/letters/m.png)" aria-hidden="true"></span>
+    </h1>
+    <!-- Clips: P Fahne · o Rettungsring · l Trinkhalm · y Steinschleuder · g Büroklammer · a Verkehrshütchen · m Krone -->
+    <canvas class="morph" data-for="p" aria-hidden="true"></canvas>
+    <canvas class="morph" data-for="o" aria-hidden="true"></canvas>
+    <canvas class="morph" data-for="l" aria-hidden="true"></canvas>
+    <canvas class="morph" data-for="y" aria-hidden="true"></canvas>
+    <canvas class="morph" data-for="g" aria-hidden="true"></canvas>
+    <canvas class="morph" data-for="a" aria-hidden="true"></canvas>
+    <canvas class="morph" data-for="m" aria-hidden="true"></canvas>
+    <!-- Hover-Flächen; y zuerst, damit l und g in den Überlappungen oben liegen -->
+    <span class="hit" data-letter="p"></span>
+    <span class="hit" data-letter="o"></span>
+    <span class="hit" data-letter="y"></span>
+    <span class="hit" data-letter="l"></span>
+    <span class="hit" data-letter="g"></span>
+    <span class="hit" data-letter="a"></span>
+    <span class="hit" data-letter="m"></span>
     <div class="note">(Not the logo)</div>
   </div>
 </main>
@@ -297,6 +352,62 @@ gl.drawArrays(gl.TRIANGLES, 0, 3)     // erst zeichnen, dann einblenden
 fadeEl.style.opacity = 0
 requestAnimationFrame(frame)
 }
+</script>
+
+<script>
+/* ============================================================
+   Buchstaben-Verwandlung: Hover (bzw. Antippen) spielt den Clip
+   des Buchstabens deckungsgleich über dem Original ab.
+   Der Clip hat schwarzen Grund; beim Zeichnen ins Canvas wird
+   Helligkeit zu Deckkraft (Schwarz = transparent), damit das
+   Objekt sauber auf dem Verlauf steht.
+============================================================ */
+const MORPH = {
+  start: 0,      // Clips sind bereits zugeschnitten (Bild 0 = flacher weißer Buchstabe)
+  size: 480,     // Rechenauflösung des Canvas (= Clip-Auflösung)
+}
+document.querySelectorAll('.morph').forEach(cv => {
+  const key = cv.dataset.for
+  const letter = document.querySelector(`.letter[data-letter="${key}"]`)
+  const hit = document.querySelector(`.hit[data-letter="${key}"]`)
+  const v = document.createElement('video')
+  Object.assign(v, { src: `assets/letters/${key}.mp4`, muted: true, playsInline: true, preload: 'auto' })
+  cv.width = cv.height = MORPH.size
+  const ctx = cv.getContext('2d', { willReadFrequently: true })
+  let active = false, raf = 0
+
+  function draw() {
+    ctx.drawImage(v, 0, 0, MORPH.size, MORPH.size)
+    const img = ctx.getImageData(0, 0, MORPH.size, MORPH.size), d = img.data
+    for (let i = 0; i < d.length; i += 4) {
+      const m = Math.max(d[i], d[i + 1], d[i + 2])
+      if (m < 10) { d[i + 3] = 0; continue }               // Kompressionsrauschen im Schwarz wegschneiden
+      const k = 255 / m
+      d[i] *= k; d[i + 1] *= k; d[i + 2] *= k; d[i + 3] = m  // Helligkeit -> Deckkraft
+    }
+    ctx.putImageData(img, 0, 0)
+  }
+  function loop() { draw(); raf = requestAnimationFrame(loop) }
+
+  function enter() {
+    if (active) return
+    active = true
+    v.currentTime = MORPH.start
+    v.play().catch(() => {})
+    cv.classList.add('is-on'); letter.classList.add('is-morphing')
+    cancelAnimationFrame(raf); loop()
+  }
+  function leave() {
+    if (!active) return
+    active = false
+    cv.classList.remove('is-on'); letter.classList.remove('is-morphing')
+    setTimeout(() => { if (!active) { v.pause(); cancelAnimationFrame(raf) } }, 500)
+  }
+  hit.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') enter() })
+  hit.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') leave() })
+  // Touch: Antippen schaltet um (Maus nutzt Hover). Am Clipende bleibt das Kristall-Bild stehen.
+  hit.addEventListener('pointerup', e => { if (e.pointerType !== 'mouse') active ? leave() : enter() })
+})
 </script>
 </body>
 </html>
