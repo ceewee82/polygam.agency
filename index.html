@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex, nofollow"><!-- DEV: vor dem Go-live entfernen -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
 <style>
   :root { --fg: #f6efe2; --muted: rgba(246,239,226,.55); --bg: #000; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); overflow: hidden; }
@@ -27,12 +27,25 @@
   }
   /* Handschrift-Schriftzug (assets/polygam-schriftzug.png) als Maske -> Farbe per CSS */
   .logo {
-    display: block; width: clamp(240px, 52vw, 720px); aspect-ratio: 848 / 292;
+    display: block; width: 100%; aspect-ratio: 848 / 292;
     background: #fff;
     -webkit-mask: url(assets/polygam-schriftzug.png) center / contain no-repeat;
             mask: url(assets/polygam-schriftzug.png) center / contain no-repeat;
   }
-  @media (max-width: 600px) { .logo { width: 80vw; } }
+  /* Hinweis: Schriftzug ist (noch) nicht das finale Logo.
+     Unterkante auf Höhe des y-Strichendes (y≈285/292), horizontal mittig zwischen
+     P-Abstrich (x≈41/848) und y-Abstrich (x≈426/848) -> Mitte x≈234 = 27,5 %.
+     Größe in cqw, damit er mit dem Logo skaliert. */
+  .mark { position: relative; container-type: inline-size; width: clamp(240px, 52vw, 720px); }
+  @media (max-width: 600px) { .mark { width: 80vw; } }
+  .note {
+    position: absolute; left: 27.5%; bottom: 1.6%; transform: translateX(-50%);
+    white-space: nowrap; font: 400 3.5cqw/1 'Inter Tight', system-ui, sans-serif;
+    text-transform: uppercase; color: #fff;
+    text-shadow: 0 0 18px rgba(0,0,0,.95), 0 0 6px rgba(0,0,0,.8);
+    opacity: 0; animation: note-in 1.6s 1.3s ease forwards;
+  }
+  @keyframes note-in { from { opacity: 0; filter: blur(6px); } to { opacity: 1; filter: none; } }
   p {
     margin: 0; font: 400 clamp(.66rem, 1.4vw, .8rem)/1 'JetBrains Mono', ui-monospace, monospace;
     letter-spacing: .45em; text-transform: uppercase; color: var(--muted); padding-left: .45em;
@@ -40,7 +53,7 @@
     opacity: 0; animation: in 1.6s 1.6s ease forwards;
   }
   @keyframes in { from { opacity: 0; transform: translateY(8px); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
-  @media (prefers-reduced-motion: reduce) { h1, p { animation-duration: .01s; animation-delay: 0s; } }
+  @media (prefers-reduced-motion: reduce) { h1, p, .note { animation-duration: .01s; animation-delay: 0s; } }
 </style>
 <script type="importmap">
 { "imports": {
@@ -53,7 +66,10 @@
 <canvas id="bg" aria-hidden="true"></canvas>
 <canvas id="scene" aria-hidden="true"></canvas>
 <main>
-  <h1><span class="logo" role="img" aria-label="polygam"></span></h1>
+  <div class="mark">
+    <h1><span class="logo" role="img" aria-label="polygam"></span></h1>
+    <div class="note">(Not the logo)</div>
+  </div>
 </main>
 <p class="soon">coming soon</p>
 
