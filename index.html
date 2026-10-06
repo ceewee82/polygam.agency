@@ -85,7 +85,7 @@ import { ConvexHull } from 'three/addons/math/ConvexHull.js'
 ============================================================ */
 // Neon (ceewee.at-Akzent #E8FF3A): im Ruhezustand gedimmt (brightness),
 // ein Klick lässt den Körper kurz in voller Stärke aufleuchten (peak)
-const look = { cool: '#8aa800', warm: '#e8ff3a', spec: '#fbffd8', edge: '#e8ff3a', dust: '#d4f02e', ambient: 0.3, key: 1.4, brightness: 0.38, peak: 0.95 }
+const look = { cool: '#8aa800', warm: '#e8ff3a', spec: '#fbffd8', edge: '#e8ff3a', dust: '#d4f02e', ambient: 0.3, key: 1.4, brightness: 0.2, peak: 0.95 }
 
 const CONFIG = {
   spacing: 0.08,      // Rasterabstand der Stäbchen
@@ -507,7 +507,7 @@ function frame() {
   const base = look.brightness
   const lift = (look.peak - base) * boost
   uniforms.iAlpha.value = a * (base + lift)
-  const dimEdges = 0.6 + 0.8 * boost   // Kanten im Ruhezustand ebenfalls zurückgenommen
+  const dimEdges = 0.35 + 1.05 * boost   // Kanten im Ruhezustand ebenfalls stark zurückgenommen
   edgeMat.opacity = a * CONFIG.edgeAlpha * dimEdges * (0.8 + 0.2 * Math.sin(now * 0.9)) + uniforms.uBurstAmt.value * 0.4
   const an = Math.max(0, Math.min(1, (performance.now() - start - 1200) / 2000))   // Netzwerk blendet nach dem Körper ein
   nodeMat.opacity = an * CONFIG.netBrightness
