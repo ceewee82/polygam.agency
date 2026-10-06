@@ -4,17 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>polygam.agency</title>
-<meta name="description" content="polygam.agency — coming soon.">
-<meta name="theme-color" content="#000000">
+<meta name="description" content="polygam.agency — is coming.">
+<meta name="theme-color" content="#060607">
 <meta name="robots" content="noindex, nofollow"><!-- DEV: vor dem Go-live entfernen -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
 <style>
-  :root { --fg: #f6efe2; --muted: rgba(246,239,226,.55); --bg: #000; }
-  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); overflow: hidden; }
-  canvas { position: fixed; inset: 0; display: block; width: 100%; height: 100%; }
-  #bg { filter: blur(3px); transform: scale(1.02); }   /* Netzwerk-Ebene: unscharf, Rand ohne Blur-Saum */
+  :root { --fg: #f6efe2; --muted: rgba(246,239,226,.55); --bg: #060607; }
+  /* Fallback ohne WebGL2: ruhiger dunkler Verlauf statt des Shaders */
+  html, body { margin: 0; height: 100%; color: var(--fg); overflow: hidden;
+    background: radial-gradient(120% 90% at 50% 40%, #1a1b1f 0%, #0b0b0d 55%, var(--bg) 100%) var(--bg); }
+  #gl { position: fixed; inset: 0; display: block; width: 100vw; height: 100vh; }
+  #fade { position: fixed; inset: 0; background: var(--bg); pointer-events: none; transition: opacity 1.4s ease; }
   main {
     position: fixed; inset: 0; display: grid; place-items: center; pointer-events: none;
     padding: 0 16px; text-align: center;
@@ -22,7 +24,7 @@
   .soon { position: fixed; left: 0; right: 0; bottom: clamp(24px, 6vh, 56px); text-align: center; pointer-events: none; }
   h1 {
     margin: 0; line-height: 0;
-    filter: drop-shadow(0 0 18px rgba(0,0,0,.85)) drop-shadow(0 0 6px rgba(0,0,0,.6));
+    filter: drop-shadow(0 0 18px rgba(0,0,0,.6));
     opacity: 0; animation: in 1.8s .9s cubic-bezier(.2,.7,.2,1) forwards;
   }
   /* Handschrift-Schriftzug (assets/polygam-schriftzug.png) als Maske -> Farbe per CSS */
@@ -42,484 +44,259 @@
     position: absolute; left: 27.5%; bottom: 1.6%; transform: translateX(-50%);
     white-space: nowrap; font: 400 3.5cqw/1 'Inter Tight', system-ui, sans-serif;
     text-transform: uppercase; color: #fff;
-    text-shadow: 0 0 18px rgba(0,0,0,.95), 0 0 6px rgba(0,0,0,.8);
+    text-shadow: 0 0 18px rgba(0,0,0,.8);
     opacity: 0; animation: note-in 1.6s 1.3s ease forwards;
   }
   @keyframes note-in { from { opacity: 0; filter: blur(6px); } to { opacity: 1; filter: none; } }
   p {
     margin: 0; font: 400 clamp(.66rem, 1.4vw, .8rem)/1 'JetBrains Mono', ui-monospace, monospace;
     letter-spacing: .45em; text-transform: uppercase; color: var(--muted); padding-left: .45em;
-    text-shadow: 0 0 18px rgba(0,0,0,.9);
     opacity: 0; animation: in 1.6s 1.6s ease forwards;
   }
   @keyframes in { from { opacity: 0; transform: translateY(8px); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
   @media (prefers-reduced-motion: reduce) { h1, p, .note { animation-duration: .01s; animation-delay: 0s; } }
 </style>
-<script type="importmap">
-{ "imports": {
-  "three": "https://unpkg.com/three@0.143.0/build/three.module.js",
-  "three/addons/": "https://unpkg.com/three@0.143.0/examples/jsm/"
-} }
-</script>
 </head>
 <body>
-<canvas id="bg" aria-hidden="true"></canvas>
-<canvas id="scene" aria-hidden="true"></canvas>
+<canvas id="gl" aria-hidden="true"></canvas>
+<div id="fade"></div>
 <main>
   <div class="mark">
     <h1><span class="logo" role="img" aria-label="polygam"></span></h1>
     <div class="note">(Not the logo)</div>
   </div>
 </main>
-<p class="soon">coming soon</p>
+<p class="soon">is coming</p>
 
-<script type="module">
-import * as THREE from 'three'
-import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js'
-import { ConvexHull } from 'three/addons/math/ConvexHull.js'
-
+<script>
 /* ============================================================
-   Basiert auf der GetLayers-Szene "Aether Flux" (Unlicense):
-   Silberne Stäbchen entlang eines Curl-Noise-Feldes — hier nicht
-   in einem Würfel, sondern in einem facettierten Polyeder.
+   Hintergrund: GetLayers-Verlauf "Airlight" (Unlicense), sehr dunkel eingefärbt.
+   Vier Bergkämme staffeln sich in den Dunst; die Lichtquelle sitzt am Cursor,
+   die Kämme verschieben sich mit der Maus leicht gegeneinander (Parallaxe).
+   Ohne Maus (Handy) bleibt er bis auf ein kaum merkliches Driften ruhig.
 ============================================================ */
-// Neon (ceewee.at-Akzent #E8FF3A): im Ruhezustand gedimmt (brightness),
-// ein Klick lässt den Körper kurz in voller Stärke aufleuchten (peak)
-const look = { cool: '#8aa800', warm: '#e8ff3a', spec: '#fbffd8', edge: '#e8ff3a', dust: '#d4f02e', ambient: 0.3, key: 1.4, brightness: 0.2, peak: 0.95 }
-
 const CONFIG = {
-  spacing: 0.08,      // Rasterabstand der Stäbchen
-  radius: 1.3,        // Umkugelradius des Ikosaeders
-  spin: 0.16,         // Taumelgeschwindigkeit
-  rodLength: 0.6,
-  rodRadius: 0.78,
-  flowFreq: 1.05,
-  flowSpeed: 0.2,
-  camDist: 4.8,
-  parallax: 0.5,
-  cursorRadius: 0.75,
-  cursorPush: 0.4,
-  cursorSwirl: 0.8,
-  edgeAlpha: 0.22,
-  dust: 0.2,
-  innerNodes: 6,      // Nodes, die direkt mit dem Hauptkörper verbunden sind
-  outerNodes: 16,     // weitere Nodes im Hintergrund
-  netSeed: 5,         // andere Zahl = andere Anordnung des Netzwerks
-  netBrightness: 0.55,
-  lineAlpha: 0.8,
+  bgColor:          '#0b0c0e',
+  colorA:           '#0e0f12',
+  colorB:           '#1b1d22',
+  colorC:           '#343841',
+  colorD:           '#6d7380',   // hellster Ton, nur im Lichtkegel am Cursor erreicht
+  scale:            1,
+  speed:            0.33,
+  ridgeScale:       0.85,
+  relief:           0.22,
+  baseH:            0.1,
+  step:             0.17,
+  softEdge:         0.006,
+  roughness:        0.55,
+  lacunarity:       2.1,
+  haze:             0.8,
+  ridgeDark:        0.62,
+  skyBase:          0.3,
+  horizon:          0.35,
+  sunR:             0.42,      // Lichtkegel am Cursor
+  sun:              0.5,
+  rimW:             0.016,
+  rim:              0.35,
+  exposure:         1,
+  contrast:         1.05,
+  midpoint:         0.5,
+  glow:             0.05,
+  sink:             0.3,
+  grain:            0,
+  grainAnim:        0,
+  dither:           1.2,       // gegen Streifenbildung im dunklen Verlauf
+  vignette:         0.22,
+  sway:             0.6,       // wie stark die Kämme der Maus folgen
+  drift:            0.015,     // Eigenbewegung ohne Maus
+  pointerRadius:    0.4,
+  pointerStrength:  0.3,
+  pointerLift:      0.08,
+  parallax:         0.001,
+  maxDpr:           1,
 }
-const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
 
-const vec3 = hex => { const n = parseInt(hex.slice(1), 16); return new THREE.Vector3(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255) }
-function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296 } }
+const fadeEl = document.getElementById('fade')
+const canvas = document.getElementById('gl')
+const gl = canvas.getContext('webgl2', { alpha: false, antialias: false, depth: false, stencil: false, powerPreference: 'high-performance' })
 
-/* ---------- RENDERER ---------- */
-const canvas = document.getElementById('scene')
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })   // transparent über der Netzwerk-Ebene
-renderer.setClearColor(0x000000, 0)
-const scene = new THREE.Scene()
-const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 80)
-camera.position.set(0, 0, 4.3)
+if (!gl) {
+  canvas.remove(); fadeEl.style.opacity = 0          // CSS-Verlauf bleibt stehen
+} else {
 
-/* ============================================================
-   IKOSAEDER
-   Konvexe Hülle der 12 Ikosaeder-Ecken -> 20 gleichseitige
-   Dreiecke. Jede Facette bekommt eine eigene Helligkeit.
-============================================================ */
-const phi = (1 + Math.sqrt(5)) / 2
-const polyPts = [
-  [-1, phi, 0], [1, phi, 0], [-1, -phi, 0], [1, -phi, 0],
-  [0, -1, phi], [0, 1, phi], [0, -1, -phi], [0, 1, -phi],
-  [phi, 0, -1], [phi, 0, 1], [-phi, 0, -1], [-phi, 0, 1],
-].map(v => new THREE.Vector3(...v).normalize().multiplyScalar(CONFIG.radius))
-const hull = new ConvexHull().setFromPoints(polyPts)
-// Abstand zur Oberfläche (negativ = innen) + Index der nächstgelegenen Facette
-const hullDist = p => { let m = -Infinity, idx = 0; hull.faces.forEach((f, i) => { const d = f.distanceToPoint(p); if (d > m) { m = d; idx = i } }); return [m, idx] }
+const hexToVec3 = hex => { const n = parseInt(hex.slice(1), 16); return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255] }
 
-const group = new THREE.Group()
-scene.add(group)
+const VERT = `#version 300 es
+void main() {
+  vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
+  gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+}`
 
-/* ---------- Stäbchen im Polyeder-Volumen ---------- */
-const NOISE_GLSL = `
-  vec3 mod289(vec3 x){ return x - floor(x * (1.0/289.0)) * 289.0; }
-  vec4 mod289(vec4 x){ return x - floor(x * (1.0/289.0)) * 289.0; }
-  vec4 permute(vec4 x){ return mod289(((x*34.0)+1.0)*x); }
-  vec4 taylorInvSqrt(vec4 r){ return 1.79284291400159 - 0.85373472095314 * r; }
-  float snoise(vec3 v){
-    const vec2 C = vec2(1.0/6.0, 1.0/3.0); const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
-    vec3 i = floor(v + dot(v, C.yyy)); vec3 x0 = v - i + dot(i, C.xxx);
-    vec3 g = step(x0.yzx, x0.xyz); vec3 l = 1.0 - g;
-    vec3 i1 = min(g.xyz, l.zxy); vec3 i2 = max(g.xyz, l.zxy);
-    vec3 x1 = x0 - i1 + C.xxx; vec3 x2 = x0 - i2 + C.yyy; vec3 x3 = x0 - D.yyy;
-    i = mod289(i);
-    vec4 p = permute(permute(permute(i.z + vec4(0.0, i1.z, i2.z, 1.0)) + i.y + vec4(0.0, i1.y, i2.y, 1.0)) + i.x + vec4(0.0, i1.x, i2.x, 1.0));
-    float n_ = 0.142857142857; vec3 ns = n_ * D.wyz - D.xzx;
-    vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
-    vec4 x_ = floor(j * ns.z); vec4 y_ = floor(j - 7.0 * x_);
-    vec4 x = x_ * ns.x + ns.yyyy; vec4 y = y_ * ns.x + ns.yyyy; vec4 h = 1.0 - abs(x) - abs(y);
-    vec4 b0 = vec4(x.xy, y.xy); vec4 b1 = vec4(x.zw, y.zw);
-    vec4 s0 = floor(b0)*2.0 + 1.0; vec4 s1 = floor(b1)*2.0 + 1.0; vec4 sh = -step(h, vec4(0.0));
-    vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy; vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww;
-    vec3 p0 = vec3(a0.xy, h.x); vec3 p1 = vec3(a0.zw, h.y); vec3 p2 = vec3(a1.xy, h.z); vec3 p3 = vec3(a1.zw, h.w);
-    vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
-    p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
-    vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0); m = m * m;
-    return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
+const FRAG = `#version 300 es
+precision highp float;
+out vec4 fragColor;
+
+uniform vec2  iResolution;
+uniform float iTime;
+uniform vec2  iMouse;
+uniform vec2  iLag;
+uniform float iEnergy;
+uniform float iIntro;
+
+uniform vec3  uBgColor, uColorA, uColorB, uColorC, uColorD;
+uniform float uScale, uSpeed, uRidgeScale, uRelief, uBaseH, uStep, uSoftEdge, uRoughness, uLacunarity;
+uniform float uHaze, uRidgeDark, uSkyBase, uHorizon, uSunR, uSun, uRimW, uRim, uExposure, uContrast;
+uniform float uMidpoint, uGlow, uSink, uGrain, uGrainAnim, uDither, uVignette, uSway, uDrift, uPointerRadius;
+uniform float uPointerStrength, uPointerLift, uParallax;
+
+vec2 hash2(vec2 p) {
+  p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
+  return -1.0 + 2.0 * fract(sin(p) * 43758.5453123);
+}
+float snoise(vec2 p) {
+  const float K1 = 0.366025404, K2 = 0.211324865;
+  vec2 i = floor(p + (p.x + p.y) * K1);
+  vec2 a = p - i + (i.x + i.y) * K2;
+  float m = step(a.y, a.x);
+  vec2 o = vec2(m, 1.0 - m);
+  vec2 b = a - o + K2;
+  vec2 c = a - 1.0 + 2.0 * K2;
+  vec3 h = max(0.5 - vec3(dot(a, a), dot(b, b), dot(c, c)), 0.0);
+  vec3 n = h * h * h * h * vec3(dot(a, hash2(i)), dot(b, hash2(i + o)), dot(c, hash2(i + 1.0)));
+  return dot(n, vec3(70.0));
+}
+#define OCT3 3
+float fbm3(vec2 p, float gain, float lac) {
+  float v = 0.0, amp = 0.5;
+  for (int i = 0; i < OCT3; i++) { v += amp * snoise(p); p *= lac; amp *= gain; }
+  return v;
+}
+vec3 ramp4(float t) {
+  vec3 c = mix(uColorA, uColorB, smoothstep(0.00, 0.36, t));
+  c = mix(c, uColorC, smoothstep(0.32, 0.70, t));
+  c = mix(c, uColorD, smoothstep(0.66, 1.00, t));
+  return c;
+}
+float triDither(vec2 fc) {
+  float a = fract(sin(dot(fc, vec2(12.9898, 78.233))) * 43758.5453);
+  float b = fract(sin(dot(fc + 17.0, vec2(12.9898, 78.233))) * 43758.5453);
+  return (a + b - 1.0) / 255.0;
+}
+#define RIDGES 4
+
+void main() {
+  vec2 uv = (gl_FragCoord.xy - 0.5 * iResolution) / iResolution.y;
+  float t = iTime * uSpeed;
+  vec2 p = uv * uScale;
+  vec2 s = iMouse;
+
+  float sunNear = exp(-dot(uv - s, uv - s) / max(1e-4, uSunR * uSunR));
+  float air = uSkyBase + sunNear * uSun + (0.5 - uv.y) * uHorizon;
+  float scene = air;
+
+  for (int i = 0; i < RIDGES; i++) {
+    float fi = float(i);
+    float z = 1.0 - fi / float(RIDGES);
+    float fq = uRidgeScale * (0.7 + 0.7 * fi);
+    float shift = iLag.x * uSway * (1.0 - z) * iIntro + t * uDrift * (1.0 + fi);
+    float h = uBaseH - fi * uStep
+            + fbm3(vec2((p.x + shift) * fq + fi * 7.3, fi * 2.1), uRoughness, uLacunarity) * uRelief * (0.7 + 0.6 * fi);
+    float mask = smoothstep(h + uSoftEdge, h - uSoftEdge, uv.y);
+    float tone = mix(uRidgeDark * (0.55 + 0.45 * (1.0 - z)), air, z * uHaze);
+    scene = mix(scene, tone, mask);
+    scene += exp(-abs(uv.y - h) / max(1e-4, uRimW)) * uRim * sunNear * (0.4 + 0.6 * (1.0 - z));
   }
-  vec3 snoiseVec3(vec3 x){ return vec3(snoise(x), snoise(vec3(x.y - 19.1, x.z + 33.4, x.x + 47.2)), snoise(vec3(x.z + 74.2, x.x - 124.5, x.y + 99.4))); }
-  vec3 curlNoise(vec3 p){
-    const float e = 0.1; vec3 dx = vec3(e,0,0); vec3 dy = vec3(0,e,0); vec3 dz = vec3(0,0,e);
-    vec3 px0 = snoiseVec3(p - dx); vec3 px1 = snoiseVec3(p + dx);
-    vec3 py0 = snoiseVec3(p - dy); vec3 py1 = snoiseVec3(p + dy);
-    vec3 pz0 = snoiseVec3(p - dz); vec3 pz1 = snoiseVec3(p + dz);
-    return vec3(py1.z - py0.z - pz1.y + pz0.y, pz1.x - pz0.x - px1.z + px0.z, px1.y - px0.y - py1.x + py0.x) / (2.0 * e);
-  }
-`
 
-const uniforms = {
-  iAlpha: { value: 0 }, uFlowPhase: { value: 0 }, uFreq: { value: CONFIG.flowFreq },
-  uRodLen: { value: CONFIG.spacing * CONFIG.rodLength }, uRodRad: { value: CONFIG.spacing * 0.34 * CONFIG.rodRadius },
-  uCool: { value: vec3(look.cool) }, uWarm: { value: vec3(look.warm) }, uSpec: { value: vec3(look.spec) },
-  uAmbient: { value: look.ambient }, uKey: { value: look.key },
-  uBurstT: { value: 0 }, uBurstAmt: { value: 0 },
-  uPointer: { value: new THREE.Vector3(99, 99, 99) }, uViewLocal: { value: new THREE.Vector3(0, 0, 1) },
-  uPtrStr: { value: 0 }, uPtrRad: { value: CONFIG.cursorRadius }, uPtrPush: { value: CONFIG.cursorPush }, uPtrSwirl: { value: CONFIG.cursorSwirl },
+  vec2 dh = uv - iMouse;
+  scene += exp(-dot(dh, dh) / max(1e-4, uPointerRadius * uPointerRadius)) * uPointerLift * iIntro
+         * mix(1.0, 0.6 + 0.4 * iEnergy, uPointerStrength);
+
+  // dunkle Palette: Ramp folgt der Helligkeit (Dunst/Licht hell, Kämme dunkel)
+  float lit = 1.0 - exp(-scene * uExposure);
+  float g = clamp((lit - uMidpoint) * uContrast + 0.5, 0.0, 1.0);
+  vec3 col = ramp4(g);
+  col += uColorD * uGlow * pow(g, 6.0);
+  col = mix(uBgColor, col, smoothstep(0.0, max(0.01, uSink), g) * 0.90 + 0.10);
+  col *= 1.0 - uVignette * dot(uv, uv);
+  col += triDither(gl_FragCoord.xy) * uDither;
+  fragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
+}`
+
+const compile = (type, src) => {
+  const sh = gl.createShader(type); gl.shaderSource(sh, src); gl.compileShader(sh)
+  if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh))
+  return sh
+}
+const program = gl.createProgram()
+gl.attachShader(program, compile(gl.VERTEX_SHADER, VERT))
+gl.attachShader(program, compile(gl.FRAGMENT_SHADER, FRAG))
+gl.linkProgram(program)
+if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program))
+gl.useProgram(program)
+gl.bindVertexArray(gl.createVertexArray())
+
+const LOC = {}
+const loc = n => (n in LOC ? LOC[n] : (LOC[n] = gl.getUniformLocation(program, n)))
+const u1f = (n, v) => gl.uniform1f(loc(n), v)
+const u2f = (n, x, y) => gl.uniform2f(loc(n), x, y)
+
+// CONFIG-Schlüssel -> Uniform (colorA -> uColorA)
+for (const k in CONFIG) {
+  if (k === 'maxDpr') continue
+  const n = 'u' + k[0].toUpperCase() + k.slice(1)
+  if (typeof CONFIG[k] === 'string') { const c = hexToVec3(CONFIG[k]); gl.uniform3f(loc(n), c[0], c[1], c[2]) } else u1f(n, CONFIG[k])
 }
 
-{
-  const s = CONFIG.spacing, centers = [], rands = [], tones = []
-  const tr = rng(11), facetTone = hull.faces.map(() => 0.72 + tr() * 0.5)
-  const p = new THREE.Vector3()
-  const n = Math.ceil(2.8 / s)
-  for (let ix = 0; ix <= n; ix++)
-    for (let iy = 0; iy <= n; iy++)
-      for (let iz = 0; iz <= n; iz++) {
-        const x = -1.4 + ix * s, y = -1.4 + iy * s, z = -1.4 + iz * s
-        p.set(x, y, z)
-        const [d, face] = hullDist(p)
-        if (d > 0) continue
-        const edge = -d
-        if (Math.random() < Math.min(0.45, edge * 0.5) && edge > 0.1) continue   // Inneres ausdünnen, Rand bleibt dicht
-        centers.push(x, y, z); rands.push(Math.random())
-        tones.push(edge < 0.22 ? facetTone[face] : 0.85)      // je Facette eigene Helligkeit
-      }
-
-  const base = new THREE.CylinderGeometry(0.55, 1.0, 1.0, 6, 1, false)
-  const geo = new THREE.InstancedBufferGeometry()
-  geo.index = base.index
-  geo.setAttribute('position', base.attributes.position)
-  geo.setAttribute('normal', base.attributes.normal)
-  geo.setAttribute('aCenter', new THREE.InstancedBufferAttribute(new Float32Array(centers), 3))
-  geo.setAttribute('aRand', new THREE.InstancedBufferAttribute(new Float32Array(rands), 1))
-  geo.setAttribute('aTone', new THREE.InstancedBufferAttribute(new Float32Array(tones), 1))
-  geo.instanceCount = rands.length
-
-  const mat = new THREE.ShaderMaterial({
-    uniforms,
-    vertexShader: NOISE_GLSL + `
-      attribute vec3 aCenter; attribute float aRand; attribute float aTone;
-      uniform float uFlowPhase; uniform float uFreq; uniform float uRodLen; uniform float uRodRad;
-      uniform float uBurstT; uniform float uBurstAmt;
-      uniform vec3 uPointer; uniform vec3 uViewLocal;
-      uniform float uPtrStr; uniform float uPtrRad; uniform float uPtrPush; uniform float uPtrSwirl;
-      varying vec3 vNormal; varying vec3 vView; varying float vAxis; varying float vY; varying float vGlow; varying float vRand; varying float vTone;
-      void main(){
-        vRand = aRand; vTone = aTone;
-        vec3 toP = aCenter - uPointer; float pd = length(toP);
-        float infl = exp(-(pd * pd) / (uPtrRad * uPtrRad)) * uPtrStr;
-        vec3 outDir = pd > 1e-4 ? toP / pd : vec3(0.0, 1.0, 0.0);
-        vec3 ctr = aCenter + outDir * infl * uPtrPush;
-        vec3 dir = curlNoise(ctr * uFreq + vec3(0.0, uFlowPhase, uFlowPhase * 0.6));
-        float dl = length(dir); dir = dl > 1e-4 ? dir / dl : vec3(0.0, 1.0, 0.0);
-        vec3 tang = cross(normalize(uViewLocal), toP); float tl = length(tang);
-        if (tl > 1e-4) dir = normalize(mix(dir, tang / tl, clamp(infl * uPtrSwirl, 0.0, 0.92)));
-        vec3 up = abs(dir.y) < 0.99 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
-        vec3 tx = normalize(cross(up, dir)); vec3 bz = cross(dir, tx); mat3 basis = mat3(tx, dir, bz);
-        float d = length(aCenter);
-        float ring = exp(-pow((d - uBurstT * 2.6) / 0.45, 2.0)) * uBurstAmt;
-        vGlow = ring + infl * 0.7;
-        float len = uRodLen * (0.62 + 0.85 * aRand) * (1.0 + ring * 0.9 + infl * 0.6);
-        vec3 p = position; vY = p.y + 0.5; p.y *= len; p.xz *= uRodRad * (0.7 + 0.5 * aRand);
-        vec4 mv = modelViewMatrix * vec4(ctr + basis * p, 1.0);
-        gl_Position = projectionMatrix * mv;
-        vNormal = normalize(normalMatrix * (basis * normal));
-        vView = normalize(-mv.xyz);
-        vAxis = abs(dot(normalize((modelViewMatrix * vec4(dir, 0.0)).xyz), vView));
-      }`,
-    fragmentShader: `
-      precision highp float;
-      uniform vec3 uCool; uniform vec3 uWarm; uniform vec3 uSpec;
-      uniform float uAmbient; uniform float uKey; uniform float iAlpha;
-      varying vec3 vNormal; varying vec3 vView; varying float vAxis; varying float vY; varying float vGlow; varying float vRand; varying float vTone;
-      void main(){
-        vec3 N = normalize(vNormal); vec3 V = normalize(vView);
-        if (dot(N, V) < 0.0) N = -N;
-        vec3 L = normalize(vec3(-0.35, 0.78, 0.52));
-        float diff = max(dot(N, L), 0.0);
-        float fres = pow(1.0 - max(dot(N, V), 0.0), 3.0);
-        float spec = pow(max(dot(N, normalize(L + V)), 0.0), 46.0);
-        vec3 col = mix(uCool, uWarm, diff * 0.85 + 0.15) * (uAmbient + uKey * diff);
-        col += uWarm * fres * 0.5;
-        col += uSpec * spec * (0.7 + 0.6 * vAxis);
-        col += uSpec * smoothstep(0.86, 1.0, vAxis) * (0.35 + 0.4 * vRand);
-        col *= mix(0.55, 1.12, vY) * vTone;      // je Facette eigene Helligkeit -> Low-Poly-Lesbarkeit
-        col += uWarm * vGlow * 1.6;
-        gl_FragColor = vec4(col * iAlpha, 1.0);
-      }`,
-  })
-  const mesh = new THREE.Mesh(geo, mat)
-  mesh.frustumCulled = false
-  group.add(mesh)
-}
-
-/* ---------- Facettenkanten (feines Drahtgitter) ---------- */
-const edgeMat = new THREE.LineBasicMaterial({ color: new THREE.Color(look.edge), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })
-group.add(new THREE.LineSegments(
-  new THREE.EdgesGeometry(new ConvexGeometry(polyPts.map(p => p.clone().multiplyScalar(1.025))), 1),
-  edgeMat
-))
-
-/* ============================================================
-   NETZWERK
-   Kleine Ikosaeder ("Nodes") liegen in einer eigenen, per CSS
-   unscharf gezeichneten Hintergrund-Ebene. Linien verbinden Ecken
-   der Nodes untereinander und mit Ecken des Hauptkörpers; Licht-
-   impulse wandern entlang der Linien.
-============================================================ */
-const bgRenderer = new THREE.WebGLRenderer({ canvas: document.getElementById('bg'), antialias: true })
-const bgScene = new THREE.Scene()
-bgScene.background = new THREE.Color(0x000000)
-bgScene.fog = new THREE.Fog(0x000000, 6, 22)
-bgScene.add(new THREE.AmbientLight(0xffffff, 0.25))
-const bgKey = new THREE.DirectionalLight(0xffffff, 1.1); bgKey.position.set(-3, 5, 4); bgScene.add(bgKey)
-
-const NR = rng(CONFIG.netSeed)
-const icoUnit = polyPts.map(p => p.clone().divideScalar(CONFIG.radius))
-const nodes = []
-const nodeMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(look.cool).lerp(new THREE.Color(look.warm), 0.35), metalness: 0.7, roughness: 0.35, flatShading: true, transparent: true, opacity: 0 })
-const nodeEdgeMat = new THREE.LineBasicMaterial({ color: new THREE.Color(look.edge), transparent: true, opacity: 0 })
-const nodeGeo = new THREE.IcosahedronGeometry(1, 0)
-const nodeEdges = new THREE.EdgesGeometry(nodeGeo)
-// Hochformat: Netzwerk eher in die Höhe als in die Breite verteilen
-const portrait = innerHeight > innerWidth
-const spread = portrait ? new THREE.Vector3(0.42, 1.9, 1) : new THREE.Vector3(1, 1, 1)
-function addNode(pos, r) {
-  const g = new THREE.Group()
-  g.position.copy(pos).multiply(spread); g.scale.setScalar(r)
-  g.quaternion.setFromEuler(new THREE.Euler(NR() * 6, NR() * 6, NR() * 6))
-  g.add(new THREE.Mesh(nodeGeo, nodeMat), new THREE.LineSegments(nodeEdges, nodeEdgeMat))
-  g.userData.spin = new THREE.Vector3(NR() - 0.5, NR() - 0.5, NR() - 0.5).normalize()
-  g.userData.rate = 0.15 + NR() * 0.25
-  bgScene.add(g); nodes.push(g)
-}
-// innerer Ring: direkte Nachbarn des Hauptkörpers
-for (let i = 0; i < CONFIG.innerNodes; i++) {
-  const a = (i / CONFIG.innerNodes) * Math.PI * 2 + NR() * 0.5
-  const d = 3.2 + NR() * 1.6
-  addNode(new THREE.Vector3(Math.cos(a) * d * 1.35, Math.sin(a) * d * 0.75, -1.5 - NR() * 3), 0.28 + NR() * 0.18)
-}
-// äußeres Feld: weiter hinten, füllt den Bildschirm
-for (let i = 0; i < CONFIG.outerNodes; i++) {
-  let p
-  do p = new THREE.Vector3((NR() * 2 - 1) * 12, (NR() * 2 - 1) * 6.5, -5 - NR() * 9)
-  while (Math.abs(p.x) < 3 && Math.abs(p.y) < 2.2)
-  addNode(p, 0.3 + NR() * 0.3)
-}
-
-// Ecke von a, die am ehesten Richtung b zeigt (fix, dreht sich mit dem Node)
-const cornerToward = (aPos, aQuat, bPos) => {
-  const d = bPos.clone().sub(aPos).applyQuaternion(aQuat.clone().invert()).normalize()
-  let best = 0, bd = -2
-  icoUnit.forEach((v, i) => { const s = v.dot(d); if (s > bd) { bd = s; best = i } })
-  return best
-}
-// Verbindungen: jeder Node zu seinen 2 nächsten Nachbarn, innerer Ring zusätzlich zum Hauptkörper
-const links = []   // { a: node|null(=Hauptkörper), ca, b: node, cb }
-const linkKey = new Set()
-nodes.forEach((nA, i) => {
-  nodes.map((nB, j) => [j, nA.position.distanceTo(nB.position)]).filter(([j]) => j !== i)
-    .sort((x, y) => x[1] - y[1]).slice(0, 2).forEach(([j]) => {
-      const k = Math.min(i, j) + '-' + Math.max(i, j)
-      if (linkKey.has(k)) return; linkKey.add(k)
-      const nB = nodes[j]
-      links.push({ a: nA, ca: cornerToward(nA.position, nA.quaternion, nB.position), b: nB, cb: cornerToward(nB.position, nB.quaternion, nA.position) })
-    })
-})
-const mainLinks = []
-for (let i = 0; i < CONFIG.innerNodes; i++) {
-  const nB = nodes[i]
-  mainLinks.push({ ca: cornerToward(group.position, group.quaternion, nB.position), b: nB, cb: cornerToward(nB.position, nB.quaternion, group.position) })
-}
-// zwei Ecken des Hauptkörpers schicken zusätzlich eine Linie ins äußere Feld
-for (let k = 0; k < 2; k++) {
-  const nB = nodes[CONFIG.innerNodes + Math.floor(NR() * CONFIG.outerNodes)]
-  mainLinks.push({ ca: Math.floor(NR() * 12), b: nB, cb: cornerToward(nB.position, nB.quaternion, group.position) })
-}
-
-// Linien-Material: Grundglimmen, das vom Hauptkörper weg verblasst, plus wandernder Impuls
-function lineMaterial(fadeFar) {
-  return new THREE.ShaderMaterial({
-    uniforms: { uTime: { value: 0 }, uColor: { value: vec3(look.edge) }, uAlpha: { value: 0 }, uFade: { value: fadeFar } },
-    vertexShader: `attribute float aT; attribute float aSeed; varying float vT; varying float vSeed;
-      void main(){ vT = aT; vSeed = aSeed; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-    fragmentShader: `precision highp float; uniform float uTime; uniform vec3 uColor; uniform float uAlpha; uniform float uFade;
-      varying float vT; varying float vSeed;
-      void main(){
-        float base = mix(1.0, uFade, vT) * 0.32;
-        float ph = fract(uTime * (0.12 + vSeed * 0.1) + vSeed * 7.0);
-        float pulse = exp(-pow((vT - ph) * 14.0, 2.0)) * 1.4;
-        vec3 c = uColor * (base + pulse) * uAlpha;
-        gl_FragColor = vec4(c, max(c.r, max(c.g, c.b)));
-      }`,
-    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, premultipliedAlpha: true,
-  })
-}
-function lineSet(count, mat, target) {
-  const g = new THREE.BufferGeometry()
-  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(count * 6), 3).setUsage(THREE.DynamicDrawUsage))
-  const tArr = new Float32Array(count * 2), sArr = new Float32Array(count * 2)
-  for (let i = 0; i < count; i++) { tArr[i * 2 + 1] = 1; sArr[i * 2] = sArr[i * 2 + 1] = NR() }
-  g.setAttribute('aT', new THREE.BufferAttribute(tArr, 1))
-  g.setAttribute('aSeed', new THREE.BufferAttribute(sArr, 1))
-  const ls = new THREE.LineSegments(g, mat); ls.frustumCulled = false
-  target.add(ls); return g
-}
-const mainLineMat = lineMaterial(0.15), netLineMat = lineMaterial(0.6)
-const mainLineGeo = lineSet(mainLinks.length, mainLineMat, scene)       // scharf, vorne
-const netLineGeo = lineSet(links.length, netLineMat, bgScene)           // unscharf, hinten
-
-const _v = new THREE.Vector3()
-const cornerWorld = (obj, idx, scale, out) => out.copy(icoUnit[idx]).multiplyScalar(scale).applyQuaternion(obj.quaternion).add(obj.position)
-function updateNetwork(dt, now) {
-  for (const nd of nodes) nd.quaternion.premultiply(dq.setFromAxisAngle(nd.userData.spin, dt * nd.userData.rate))
-  let arr = netLineGeo.attributes.position.array
-  links.forEach((l, i) => {
-    cornerWorld(l.a, l.ca, l.a.scale.x, _v).toArray(arr, i * 6)
-    cornerWorld(l.b, l.cb, l.b.scale.x, _v).toArray(arr, i * 6 + 3)
-  })
-  netLineGeo.attributes.position.needsUpdate = true
-  arr = mainLineGeo.attributes.position.array
-  mainLinks.forEach((l, i) => {
-    cornerWorld(group, l.ca, CONFIG.radius * 1.025, _v).toArray(arr, i * 6)
-    cornerWorld(l.b, l.cb, l.b.scale.x, _v).toArray(arr, i * 6 + 3)
-  })
-  mainLineGeo.attributes.position.needsUpdate = true
-  mainLineMat.uniforms.uTime.value = netLineMat.uniforms.uTime.value = now
-}
-
-/* ---------- Staub ---------- */
-const DN = 380, dpos = new Float32Array(DN * 3), dsize = new Float32Array(DN)
-for (let i = 0; i < DN; i++) {
-  const r = 3 + Math.random() * 9, th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1)
-  dpos.set([r * Math.sin(ph) * Math.cos(th), r * Math.sin(ph) * Math.sin(th), r * Math.cos(ph)], i * 3)
-  dsize[i] = 1 + Math.random() * 2
-}
-const dgeo = new THREE.BufferGeometry()
-dgeo.setAttribute('position', new THREE.BufferAttribute(dpos, 3))
-dgeo.setAttribute('aSize', new THREE.BufferAttribute(dsize, 1))
-const dustU = { iTime: { value: 0 }, iAlpha: uniforms.iAlpha, uColor: { value: vec3(look.dust) }, uBright: { value: CONFIG.dust }, uDpr: { value: 1 } }
-const dust = new THREE.Points(dgeo, new THREE.ShaderMaterial({
-  uniforms: dustU,
-  vertexShader: `attribute float aSize; uniform float iTime; uniform float uDpr; varying float vTw;
-    void main(){ vTw = 0.45 + 0.55 * sin(iTime * 0.25 + position.x * 0.7 + position.y * 1.3);
-      vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv;
-      gl_PointSize = aSize * uDpr * 110.0 / max(0.1, -mv.z); }`,
-  fragmentShader: `precision highp float; uniform vec3 uColor; uniform float uBright; uniform float iAlpha; varying float vTw;
-    void main(){ vec2 d = gl_PointCoord - 0.5; float a = exp(-dot(d, d) * 9.0);
-      gl_FragColor = vec4(uColor * a * vTw * uBright * 1.4, 1.0) * a * iAlpha; }`,
-  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-}))
-dust.frustumCulled = false
-scene.add(dust)
-
-/* ---------- Interaktion ---------- */
-const pointer = new THREE.Vector2()
-let ptrActive = false
-addEventListener('pointermove', e => {
-  pointer.set((e.clientX / innerWidth) * 2 - 1, -((e.clientY / innerHeight) * 2 - 1))
-  ptrActive = e.pointerType === 'mouse'
-}, { passive: true })
-document.addEventListener('pointerleave', () => { ptrActive = false })
-let boost = 0, boostTarget = 0   // Aufleuchten per Klick
-addEventListener('pointerdown', () => { uniforms.uBurstT.value = 0; uniforms.uBurstAmt.value = 1; boostTarget = 1 })
-
-let camDist = CONFIG.camDist
 function resize() {
-  const w = innerWidth, h = innerHeight, dpr = Math.min(devicePixelRatio, 2)
-  if (!w || !h) return                                              // unsichtbar geladen (z. B. Hintergrund-Tab)
-  renderer.setPixelRatio(dpr); renderer.setSize(w, h, false)
-  bgRenderer.setPixelRatio(1); bgRenderer.setSize(w, h, false)   // wird ohnehin weichgezeichnet
-  camera.aspect = w / h; camera.updateProjectionMatrix()
-  camDist = Math.max(CONFIG.camDist, 4.6 / camera.aspect / 0.828)   // Hochformat: Polyeder bleibt vollständig sichtbar
-  dustU.uDpr.value = dpr
+  const dpr = Math.min(devicePixelRatio || 1, CONFIG.maxDpr)
+  const w = Math.max(1, Math.round(innerWidth * dpr)), h = Math.max(1, Math.round(innerHeight * dpr))
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h }
+  gl.viewport(0, 0, w, h)
+  u2f('iResolution', w, h)
 }
-addEventListener('resize', resize); resize()
+let resizeQueued = false
+addEventListener('resize', () => {
+  if (resizeQueued) return
+  resizeQueued = true
+  requestAnimationFrame(() => { resizeQueued = false; resize() })
+}, { passive: true })
+resize()
 
-/* ---------- Loop ---------- */
-const ray = new THREE.Vector3(), dir = new THREE.Vector3(), n = new THREE.Vector3(), hit = new THREE.Vector3(), invq = new THREE.Quaternion()
-const axis = new THREE.Vector3(), dq = new THREE.Quaternion()
-group.quaternion.setFromEuler(new THREE.Euler(0.5, 0.3, 0.2))
-const start = performance.now()
-let last = start / 1000, t = 0
-const speed = reduced ? 0.25 : 1
-function frame() {
+/* Zeiger: Kopf + Nachläufer + "Energie" der Bewegung (aus Airlight übernommen) */
+const P = { tx: 0, ty: 0, hx: 0, hy: 0, mx: 0, my: 0, sx: 0, sy: 0, e: 0 }
+let seeded = false
+const aim = e => {
+  P.tx = (e.clientX / innerWidth - 0.5) * (innerWidth / innerHeight)
+  P.ty = 0.5 - e.clientY / innerHeight
+  if (!seeded) { seeded = true; P.hx = P.mx = P.sx = P.tx; P.hy = P.my = P.sy = P.ty }
+}
+addEventListener('pointermove', aim, { passive: true })
+addEventListener('pointerdown', aim, { passive: true })
+
+let prevT = performance.now(), clock = 0, intro = 0
+function frame(now) {
   requestAnimationFrame(frame)
-  const now = performance.now() / 1000, dt = Math.min(0.05, now - last); last = now
-  t += dt * speed
-  dustU.iTime.value = now
-  uniforms.uFlowPhase.value += dt * CONFIG.flowSpeed * speed
+  const raw = now - prevT; prevT = now
+  if (document.hidden) return
+  const dt = raw > 50 ? 0.05 : raw < 0.001 ? 0.001 : raw * 0.001
+  clock += dt
+  const kh = 1 - Math.exp(-6.0 * dt), km = 1 - Math.exp(-2.6 * dt), ks = 1 - Math.exp(-1.25 * dt)
+  P.hx += (P.tx - P.hx) * kh; P.hy += (P.ty - P.hy) * kh
+  P.mx += (P.hx - P.mx) * km; P.my += (P.hy - P.my) * km
+  P.sx += (P.mx - P.sx) * ks; P.sy += (P.my - P.sy) * ks
+  const ex = P.hx - P.sx, ey = P.hy - P.sy
+  const want = Math.min(Math.sqrt(ex * ex + ey * ey) * 5.5, 1)
+  P.e += (want - P.e) * (1 - Math.exp(-(want > P.e ? 5.0 : 0.40) * dt))
+  intro += ((seeded ? 1 : 0) - intro) * (1 - Math.exp(-3.0 * dt))
 
-  // Taumeln in alle Richtungen: Drehachse wandert langsam, der Körper rollt frei
-  axis.set(Math.sin(t * 0.13), Math.cos(t * 0.09) + 0.4, Math.sin(t * 0.07 + 1)).normalize()
-  group.quaternion.premultiply(dq.setFromAxisAngle(axis, dt * CONFIG.spin * speed))
-  group.updateMatrixWorld()
-
-  camera.position.x += (pointer.x * CONFIG.parallax - camera.position.x) * 0.05
-  camera.position.y += (pointer.y * CONFIG.parallax * 0.7 - camera.position.y) * 0.05
-  camera.position.z += (camDist - camera.position.z) * 0.06
-  camera.lookAt(0, 0, 0)
-
-  ray.set(pointer.x, pointer.y, 0.5).unproject(camera)
-  dir.copy(ray).sub(camera.position).normalize()
-  n.copy(camera.position).normalize()
-  const den = dir.dot(n)
-  if (Math.abs(den) > 1e-4) {
-    hit.copy(camera.position).addScaledVector(dir, -camera.position.dot(n) / den)
-    group.worldToLocal(hit); uniforms.uPointer.value.copy(hit)
-  }
-  invq.copy(group.quaternion).invert()
-  uniforms.uViewLocal.value.copy(n).applyQuaternion(invq)
-  uniforms.uPtrStr.value += ((ptrActive ? 1 : 0) - uniforms.uPtrStr.value) * Math.min(1, dt * 4)
-
-  if (uniforms.uBurstAmt.value > 0.001) {
-    uniforms.uBurstT.value += dt
-    uniforms.uBurstAmt.value *= Math.pow(0.5, dt / 0.7)
-    if (uniforms.uBurstT.value > 1.4) uniforms.uBurstAmt.value = 0
-  }
-  dust.position.copy(camera.position)
-
-  const a = Math.max(0, Math.min(1, (performance.now() - start - 300) / 1400))
-  // schnell hochfahren, dann über ~2–3 s weich zurück in den Ruhezustand
-  if (boostTarget) {
-    boost += (1 - boost) * Math.min(1, dt * 9)
-    if (boost > 0.97) boostTarget = 0
-  } else boost *= Math.pow(0.5, dt / 0.7)   // Halbwertszeit 0,7 s
-  const base = look.brightness
-  const lift = (look.peak - base) * boost
-  uniforms.iAlpha.value = a * (base + lift)
-  const dimEdges = 0.35 + 1.05 * boost   // Kanten im Ruhezustand ebenfalls stark zurückgenommen
-  edgeMat.opacity = a * CONFIG.edgeAlpha * dimEdges * (0.8 + 0.2 * Math.sin(now * 0.9)) + uniforms.uBurstAmt.value * 0.4
-  const an = Math.max(0, Math.min(1, (performance.now() - start - 1200) / 2000))   // Netzwerk blendet nach dem Körper ein
-  nodeMat.opacity = an * CONFIG.netBrightness
-  nodeEdgeMat.opacity = an * CONFIG.netBrightness * 0.6
-  netLineMat.uniforms.uAlpha.value = an * CONFIG.lineAlpha * CONFIG.netBrightness
-  mainLineMat.uniforms.uAlpha.value = an * CONFIG.lineAlpha * 0.7 + uniforms.uBurstAmt.value * 0.5
-  updateNetwork(dt * speed, now)
-
-  bgRenderer.render(bgScene, camera)
-  renderer.render(scene, camera)
+  u1f('iTime', clock); u1f('iEnergy', P.e); u1f('iIntro', intro)
+  u2f('iMouse', P.hx, P.hy); u2f('iLag', P.mx, P.my)
+  gl.drawArrays(gl.TRIANGLES, 0, 3)
 }
-frame()
+gl.drawArrays(gl.TRIANGLES, 0, 3)     // erst zeichnen, dann einblenden
+fadeEl.style.opacity = 0
+requestAnimationFrame(frame)
+}
 </script>
 </body>
 </html>
