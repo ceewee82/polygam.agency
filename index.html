@@ -22,13 +22,13 @@
   .soon { position: fixed; left: 0; right: 0; bottom: clamp(24px, 6vh, 56px); text-align: center; pointer-events: none; }
   h1 {
     margin: 0; line-height: 0;
-    filter: drop-shadow(0 0 18px rgba(0,0,0,.85)) drop-shadow(0 0 6px rgba(0,0,0,.6)) drop-shadow(0 0 14px var(--glow, transparent));
+    filter: drop-shadow(0 0 18px rgba(0,0,0,.85)) drop-shadow(0 0 6px rgba(0,0,0,.6));
     opacity: 0; animation: in 1.8s .9s cubic-bezier(.2,.7,.2,1) forwards;
   }
-  /* Handschrift-Schriftzug (assets/polygam-schriftzug.png) als Maske -> Farbe über --logo steuerbar */
+  /* Handschrift-Schriftzug (assets/polygam-schriftzug.png) als Maske -> Farbe per CSS */
   .logo {
     display: block; width: clamp(240px, 52vw, 720px); aspect-ratio: 848 / 292;
-    background: var(--logo, #fff);
+    background: #fff;
     -webkit-mask: url(assets/polygam-schriftzug.png) center / contain no-repeat;
             mask: url(assets/polygam-schriftzug.png) center / contain no-repeat;
   }
@@ -66,24 +66,14 @@ import { ConvexHull } from 'three/addons/math/ConvexHull.js'
    Basiert auf der GetLayers-Szene "Aether Flux" (Unlicense):
    Silberne Stäbchen entlang eines Curl-Noise-Feldes — hier nicht
    in einem Würfel, sondern in einem facettierten Polyeder.
-   Farbwahl per URL: ?look=neon (Standard) | gold | silver | red
 ============================================================ */
-const LOOKS = {
-  gold:   { cool: '#7a5a30', warm: '#f7e2b0', spec: '#fff4dc', edge: '#e8c27a', dust: '#a8844c', ambient: 0.14, key: 1.15 },
-  silver: { cool: '#9fb0c4', warm: '#f4eee2', spec: '#ffffff', edge: '#dfe6f0', dust: '#7d93b0', ambient: 0.12, key: 1.15 },
-  neon:   { cool: '#8aa800', warm: '#e8ff3a', spec: '#fbffd8', edge: '#e8ff3a', dust: '#d4f02e', ambient: 0.3, key: 1.4, brightness: 0.8 },   // ceewee.at-Akzent #E8FF3A
-  dark:   { cool: '#1c1d20', warm: '#6a6c72', spec: '#9a9ca3', edge: '#5d6066', dust: '#3a3c40', ambient: 0.22, key: 1.1, brightness: 0.75,
-            text: '#e8ff3a', textGlow: 'rgba(232,255,58,.28)' },   // Körper im Hintergrund, Schrift in Neon
-  red:    { cool: '#4a0710', warm: '#ff6b74', spec: '#ffd9dc', edge: '#ff8a92', dust: '#9a2a34', ambient: 0.16, key: 1.25 },
-}
-const look = LOOKS[new URLSearchParams(location.search).get('look')] || LOOKS.neon
-if (look.text) document.documentElement.style.setProperty('--logo', look.text)
-if (look.textGlow) document.documentElement.style.setProperty('--glow', look.textGlow)
+// Neon (ceewee.at-Akzent #E8FF3A): im Ruhezustand gedimmt (brightness),
+// ein Klick lässt den Körper kurz in voller Stärke aufleuchten (peak)
+const look = { cool: '#8aa800', warm: '#e8ff3a', spec: '#fbffd8', edge: '#e8ff3a', dust: '#d4f02e', ambient: 0.3, key: 1.4, brightness: 0.38, peak: 0.95 }
 
 const CONFIG = {
   spacing: 0.08,      // Rasterabstand der Stäbchen
   radius: 1.3,        // Umkugelradius des Ikosaeders
-  brightness: 0.5,    // Gesamthelligkeit der Szene (Hintergrund, Schrift soll vorne stehen)
   spin: 0.22,         // Taumelgeschwindigkeit
   rodLength: 0.6,
   rodRadius: 0.78,
@@ -434,7 +424,8 @@ addEventListener('pointermove', e => {
   ptrActive = e.pointerType === 'mouse'
 }, { passive: true })
 document.addEventListener('pointerleave', () => { ptrActive = false })
-addEventListener('pointerdown', () => { uniforms.uBurstT.value = 0; uniforms.uBurstAmt.value = 1 })
+let boost = 0, boostTarget = 0   // Aufleuchten per Klick
+addEventListener('pointerdown', () => { uniforms.uBurstT.value = 0; uniforms.uBurstAmt.value = 1; boostTarget = 1 })
 
 let camDist = CONFIG.camDist
 function resize() {
@@ -492,8 +483,16 @@ function frame() {
   dust.position.copy(camera.position)
 
   const a = Math.max(0, Math.min(1, (performance.now() - start - 300) / 1400))
-  uniforms.iAlpha.value = a * (look.brightness ?? CONFIG.brightness)
-  edgeMat.opacity = a * CONFIG.edgeAlpha * (0.8 + 0.2 * Math.sin(now * 0.9)) + uniforms.uBurstAmt.value * 0.4
+  // schnell hochfahren, dann über ~2–3 s weich zurück in den Ruhezustand
+  if (boostTarget) {
+    boost += (1 - boost) * Math.min(1, dt * 9)
+    if (boost > 0.97) boostTarget = 0
+  } else boost *= Math.pow(0.5, dt / 0.7)   // Halbwertszeit 0,7 s
+  const base = look.brightness
+  const lift = (look.peak - base) * boost
+  uniforms.iAlpha.value = a * (base + lift)
+  const dimEdges = 0.6 + 0.8 * boost   // Kanten im Ruhezustand ebenfalls zurückgenommen
+  edgeMat.opacity = a * CONFIG.edgeAlpha * dimEdges * (0.8 + 0.2 * Math.sin(now * 0.9)) + uniforms.uBurstAmt.value * 0.4
   const an = Math.max(0, Math.min(1, (performance.now() - start - 1200) / 2000))   // Netzwerk blendet nach dem Körper ein
   nodeMat.opacity = an * CONFIG.netBrightness
   nodeEdgeMat.opacity = an * CONFIG.netBrightness * 0.6
