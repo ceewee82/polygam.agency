@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex, nofollow"><!-- DEV: vor dem Go-live entfernen -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
 <style>
   :root { --fg: #f6efe2; --muted: rgba(246,239,226,.55); --bg: #000; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); overflow: hidden; }
@@ -21,10 +21,18 @@
   }
   .soon { position: fixed; left: 0; right: 0; bottom: clamp(24px, 6vh, 56px); text-align: center; pointer-events: none; }
   h1 {
-    margin: 0; font: 300 clamp(4.03rem, 13.8vw, 11.9rem)/1 'Inter Tight', system-ui, sans-serif;
-    letter-spacing: -.03em; text-shadow: 0 0 40px rgba(0,0,0,.85), 0 0 12px rgba(0,0,0,.6);
+    margin: 0; line-height: 0;
+    filter: drop-shadow(0 0 18px rgba(0,0,0,.85)) drop-shadow(0 0 6px rgba(0,0,0,.6)) drop-shadow(0 0 14px var(--glow, transparent));
     opacity: 0; animation: in 1.8s .9s cubic-bezier(.2,.7,.2,1) forwards;
   }
+  /* Handschrift-Schriftzug (assets/polygam-schriftzug.png) als Maske -> Farbe über --logo steuerbar */
+  .logo {
+    display: block; width: clamp(240px, 52vw, 720px); aspect-ratio: 848 / 292;
+    background: var(--logo, #fff);
+    -webkit-mask: url(assets/polygam-schriftzug.png) center / contain no-repeat;
+            mask: url(assets/polygam-schriftzug.png) center / contain no-repeat;
+  }
+  @media (max-width: 600px) { .logo { width: 80vw; } }
   p {
     margin: 0; font: 400 clamp(.66rem, 1.4vw, .8rem)/1 'JetBrains Mono', ui-monospace, monospace;
     letter-spacing: .45em; text-transform: uppercase; color: var(--muted); padding-left: .45em;
@@ -45,7 +53,7 @@
 <canvas id="bg" aria-hidden="true"></canvas>
 <canvas id="scene" aria-hidden="true"></canvas>
 <main>
-  <h1>polygam</h1>
+  <h1><span class="logo" role="img" aria-label="polygam"></span></h1>
 </main>
 <p class="soon">coming soon</p>
 
@@ -64,9 +72,13 @@ const LOOKS = {
   gold:   { cool: '#7a5a30', warm: '#f7e2b0', spec: '#fff4dc', edge: '#e8c27a', dust: '#a8844c', ambient: 0.14, key: 1.15 },
   silver: { cool: '#9fb0c4', warm: '#f4eee2', spec: '#ffffff', edge: '#dfe6f0', dust: '#7d93b0', ambient: 0.12, key: 1.15 },
   neon:   { cool: '#8aa800', warm: '#e8ff3a', spec: '#fbffd8', edge: '#e8ff3a', dust: '#d4f02e', ambient: 0.3, key: 1.4, brightness: 0.8 },   // ceewee.at-Akzent #E8FF3A
+  dark:   { cool: '#1c1d20', warm: '#6a6c72', spec: '#9a9ca3', edge: '#5d6066', dust: '#3a3c40', ambient: 0.22, key: 1.1, brightness: 0.75,
+            text: '#e8ff3a', textGlow: 'rgba(232,255,58,.28)' },   // Körper im Hintergrund, Schrift in Neon
   red:    { cool: '#4a0710', warm: '#ff6b74', spec: '#ffd9dc', edge: '#ff8a92', dust: '#9a2a34', ambient: 0.16, key: 1.25 },
 }
 const look = LOOKS[new URLSearchParams(location.search).get('look')] || LOOKS.neon
+if (look.text) document.documentElement.style.setProperty('--logo', look.text)
+if (look.textGlow) document.documentElement.style.setProperty('--glow', look.textGlow)
 
 const CONFIG = {
   spacing: 0.08,      // Rasterabstand der Stäbchen
