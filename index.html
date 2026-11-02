@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex, nofollow"><!-- DEV: vor dem Go-live entfernen -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400&family=JetBrains+Mono:wght@400&family=Inter:wght@100;400;700;900&family=Lora:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400&family=JetBrains+Mono:wght@400&family=Inter:wght@100;400;700;900&family=Lora:wght@400;500;600;700&family=Playfair+Display:wght@400;700;900&family=Space+Grotesk:wght@300;400;700&family=IBM+Plex+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root { --fg: #000; --muted: rgba(0,0,0,.55); --bg: #fff; }
   html, body { margin: 0; height: 100%; color: var(--fg); overflow: hidden; background: var(--bg); }
@@ -117,55 +117,75 @@
 
 <script>
 /* ============================================================
-   Buchstaben-Hover: Jeder Buchstabe von "polygam" wechselt bei Mouseover
-   (bzw. Antippen) in einen zufälligen Stil aus Inter + Lora, mit zufälliger
-   Groß-/Kleinschreibung und Größe, und springt beim Verlassen zurück zur
-   Handschrift. Die Zeichen bleiben in ihrem Slot und stehen auf einer
-   gemeinsamen Grundlinie.
+   Buchstaben-Hover: Solange die Maus auf einem Buchstaben von "polygam" liegt
+   (bzw. nach dem Antippen), tauscht er im Takt Schrift, Gewicht, Groß-/Klein-
+   schreibung und Größe aus; beim Verlassen springt er zurück zur Handschrift.
+   Schriften: Inter, Lora, Playfair Display, Space Grotesk, IBM Plex Mono, Helvetica, Times New Roman. Die Zeichen bleiben in
+   ihrem Slot und stehen auf einer gemeinsamen Grundlinie.
 ============================================================ */
-const STYLES = [
-  ['Inter', 100], ['Inter', 400], ['Inter', 700], ['Inter', 900],
-  ['Lora', 400], ['Lora', 500], ['Lora', 600], ['Lora', 700],
+const FAMILIES = [
+  { css: "'Inter', sans-serif",                            weights: [100, 400, 700, 900], web: true },
+  { css: "'Lora', serif",                                  weights: [400, 500, 600, 700], web: true },
+  { css: "'Playfair Display', serif",                      weights: [400, 700, 900],      web: true },
+  { css: "'Space Grotesk', sans-serif",                    weights: [300, 400, 700],      web: true },
+  { css: "'IBM Plex Mono', monospace",                     weights: [400, 700],           web: true },
+  { css: "Helvetica, 'Helvetica Neue', Arial, sans-serif", weights: [400, 700] },
+  { css: "'Times New Roman', Times, serif",                weights: [400, 700] },
 ]
+const TICK_MS = [180, 300]   // Wechseltakt (zufällig in diesem Bereich): schnell genug für Bewegung, langsam genug, dass jeder Zustand lesbar bleibt
+const TOUCH_MS = 3000        // Touch: Wechsel läuft nach dem Antippen so lange
 const CAPS_RATIO = 0.45
 const SIZE_JITTER = 0.15
 const BASELINE = 0.57        // Grundlinie der Handschrift in % der Logo-Höhe (Unterkante von o/a)
 const BASE_SIZE = 0.15       // Schriftgröße in Anteilen der Logo-Breite (entspricht 15cqw)
 
-// Schriften vorab laden, damit beim ersten Hover nichts nachspringt
-STYLES.forEach(([f, w]) => document.fonts && document.fonts.load(`${w} 40px ${f}`, 'polygamPOLYGAM').catch(() => {}))
+// Web-Fonts vorab laden, damit beim ersten Wechsel nichts nachspringt
+FAMILIES.filter(f => f.web).forEach(f => f.weights.forEach(w => document.fonts && document.fonts.load(`${w} 40px ${f.css.split(',')[0]}`, 'polygamPOLYGAM').catch(() => {})))
 
 const mark = document.querySelector('.mark'), logo = document.querySelector('.logo')
 const metricsCtx = document.createElement('canvas').getContext('2d')
+const pick = arr => arr[Math.floor(Math.random() * arr.length)]
 
 document.querySelectorAll('.hit').forEach(hit => {
   const key = hit.dataset.letter
   const letter = document.querySelector(`.letter[data-letter="${key}"]`)
   const glyph = document.querySelector(`.glyph[data-for="${key}"]`)
-  let current = -1
+  let family = null, weight = 0, timer = 0, stopTimer = 0
 
-  function enter() {
-    let i
-    do { i = Math.floor(Math.random() * STYLES.length) } while (i === current)
-    current = i
-    const [family, weight] = STYLES[i]
+  function shuffle() {
+    // immer eine andere Familie als zuvor, damit jeder Schritt sichtbar ist
+    let f; do { f = pick(FAMILIES) } while (f === family)
+    family = f
+    weight = pick(f.weights)
     const size = mark.clientWidth * BASE_SIZE * (1 + (Math.random() * 2 - 1) * SIZE_JITTER)
     glyph.textContent = Math.random() < CAPS_RATIO ? key.toUpperCase() : key
-    Object.assign(glyph.style, { fontFamily: `'${family}', serif`, fontWeight: weight, fontSize: size + 'px' })
+    Object.assign(glyph.style, { fontFamily: f.css, fontWeight: weight, fontSize: size + 'px' })
     // Grundlinie: bei line-height 1 liegt sie size/2 + (Ascent - Descent)/2 unter der Oberkante
-    metricsCtx.font = `${weight} ${size}px '${family}'`
+    metricsCtx.font = `${weight} ${size}px ${f.css}`
     const m = metricsCtx.measureText(glyph.textContent)
     const off = size / 2 + (m.fontBoundingBoxAscent - m.fontBoundingBoxDescent) / 2
     glyph.style.top = logo.clientHeight * BASELINE - off + 'px'
+  }
+  function tick() {
+    shuffle()
+    timer = setTimeout(tick, TICK_MS[0] + Math.random() * (TICK_MS[1] - TICK_MS[0]))
+  }
+  function enter() {
+    if (timer) return
     glyph.classList.add('is-on'); letter.classList.add('is-morphing')
+    tick()
   }
   function leave() {
+    clearTimeout(timer); clearTimeout(stopTimer); timer = stopTimer = 0
     glyph.classList.remove('is-on'); letter.classList.remove('is-morphing')
   }
   hit.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') enter() })
   hit.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') leave() })
-  // Touch: jedes Antippen würfelt neu
-  hit.addEventListener('pointerup', e => { if (e.pointerType !== 'mouse') enter() })
+  // Touch: Antippen startet den Wechsel für ein paar Sekunden, erneutes Antippen beendet ihn
+  hit.addEventListener('pointerup', e => {
+    if (e.pointerType === 'mouse') return
+    if (timer) leave(); else { enter(); stopTimer = setTimeout(leave, TOUCH_MS) }
+  })
 })
 </script>
 </body>
