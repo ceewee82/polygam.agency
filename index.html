@@ -5,18 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>polygam.agency</title>
 <meta name="description" content="polygam.agency — is coming.">
-<meta name="theme-color" content="#060607">
+<meta name="theme-color" content="#ffffff">
 <meta name="robots" content="noindex, nofollow"><!-- DEV: vor dem Go-live entfernen -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400&family=JetBrains+Mono:wght@400&family=Playfair+Display:wght@700&family=Space+Mono:wght@700&family=Bebas+Neue&family=Pacifico&family=Abril+Fatface&family=Lobster&family=Roboto+Slab:wght@800&family=Righteous&family=Permanent+Marker&family=Unbounded:wght@800&family=Caveat:wght@700&family=DM+Serif+Display&family=Press+Start+2P&family=Archivo+Black&display=swap" rel="stylesheet">
 <style>
-  :root { --fg: #f6efe2; --muted: rgba(246,239,226,.55); --bg: #060607; }
-  /* Fallback ohne WebGL2: ruhiger dunkler Verlauf statt des Shaders */
-  html, body { margin: 0; height: 100%; color: var(--fg); overflow: hidden;
-    background: radial-gradient(120% 90% at 50% 40%, #1a1b1f 0%, #0b0b0d 55%, var(--bg) 100%) var(--bg); }
-  #gl { position: fixed; inset: 0; display: block; width: 100vw; height: 100vh; }
-  #fade { position: fixed; inset: 0; background: var(--bg); pointer-events: none; transition: opacity 1.4s ease; }
+  :root { --fg: #000; --muted: rgba(0,0,0,.55); --bg: #fff; }
+  html, body { margin: 0; height: 100%; color: var(--fg); overflow: hidden; background: var(--bg); }
   main {
     position: fixed; inset: 0; display: grid; place-items: center; pointer-events: none;
     padding: 0 16px; text-align: center;
@@ -24,13 +20,12 @@
   .soon { position: fixed; left: 0; right: 0; bottom: clamp(24px, 6vh, 56px); text-align: center; pointer-events: none; }
   h1 {
     margin: 0; line-height: 0;
-    filter: drop-shadow(0 0 18px rgba(0,0,0,.6));
     opacity: 0; animation: in 1.8s .9s cubic-bezier(.2,.7,.2,1) forwards;
   }
   /* Handschrift-Schriftzug (assets/polygam-schriftzug.png) als Maske -> Farbe per CSS */
   .logo {
     display: block; width: 100%; aspect-ratio: 848 / 292;
-    background: #fff;
+    background: #000;
     -webkit-mask: url(assets/polygam-schriftzug.png) center / contain no-repeat;
             mask: url(assets/polygam-schriftzug.png) center / contain no-repeat;
   }
@@ -40,41 +35,33 @@
      Größe in cqw, damit er mit dem Logo skaliert. */
   .mark { position: relative; container-type: inline-size; width: clamp(240px, 52vw, 720px); }
 
-  /* ---- Buchstaben-Verwandlung (Hover) ----
+  /* ---- Buchstaben-Hover: zufällige Schrift ----
      Der Schriftzug ist in 7 Ebenen zerlegt (assets/letters/<x>.png, je in voller Logo-Größe,
      nur ein Buchstabe sichtbar). .logo bleibt als unsichtbarer Platzhalter für die Größe.
-     .hit = Hover-Fläche (Rechteck um den Buchstaben), .morph = Canvas für den Clip
-     (assets/letters/<x>.mp4, schwarzer Grund wird beim Zeichnen transparent).
-     Positionen in % der Logo-Breite/-Höhe (848×292); das Clip-Quadrat entspricht der
-     1024er-Vorlage, in der der Buchstabe auf 70 % eingepasst und zentriert ist. */
+     .hit = Hover-Fläche (Rechteck um den Buchstaben, % der Logo-Breite/-Höhe 848×292).
+     Beim Hover wird die Handschrift-Ebene ausgeblendet und stattdessen ein echtes
+     Textzeichen (.glyph) in einer zufälligen Schrift in der Hover-Fläche zentriert. */
   h1 { position: relative; }
   .logo { background: none; -webkit-mask: none; mask: none; }
-  .letter { position: absolute; inset: 0; background: #fff; transition: opacity .35s ease;
+  .letter { position: absolute; inset: 0; background: #000;
     -webkit-mask: var(--m) center / contain no-repeat; mask: var(--m) center / contain no-repeat; }
-  .letter.is-morphing { opacity: 0; transition-duration: .05s; }
+  .letter.is-morphing { opacity: 0; }
   .hit { position: absolute; pointer-events: auto; }
-  .morph { position: absolute; aspect-ratio: 1; pointer-events: none; opacity: 0; transition: opacity .45s ease; }
-  .morph.is-on { opacity: 1; transition-duration: .05s; }
-  .hit[data-letter="p"]   { left: 0.71%; top: 21.58%; width: 27%; height: 60.96%; }
-  .morph[data-for="p"] { left: -5.08%; top: -3.96%; width: 38.58%; }
-  .hit[data-letter="o"]   { left: 30.19%; top: 27.74%; width: 11.44%; height: 28.42%; }
-  .morph[data-for="o"] { left: 27.74%; top: 18.22%; width: 16.34%; }
-  .hit[data-letter="l"]   { left: 43.51%; top: 2.05%; width: 10.73%; height: 54.45%; }
-  .morph[data-for="l"] { left: 35.49%; top: -9.61%; width: 26.79%; }
-  .hit[data-letter="y"]   { left: 50.24%; top: 19.52%; width: 13.8%; height: 78.42%; }
-  .morph[data-for="y"] { left: 37.85%; top: 2.72%; width: 38.58%; }
-  .hit[data-letter="g"]   { left: 61.91%; top: 25%; width: 13.09%; height: 63.36%; }
-  .morph[data-for="g"] { left: 52.87%; top: 11.42%; width: 31.17%; }
-  .hit[data-letter="a"]   { left: 75.59%; top: 27.74%; width: 9.55%; height: 29.79%; }
-  .morph[data-for="a"] { left: 73.04%; top: 21.36%; width: 14.66%; }
-  .hit[data-letter="m"]   { left: 87.03%; top: 27.05%; width: 12.26%; height: 35.27%; }
-  .morph[data-for="m"] { left: 84.4%; top: 19.25%; width: 17.52%; }
+  .glyph { position: absolute; display: flex; align-items: center; justify-content: center;
+    pointer-events: none; opacity: 0; color: #000; font-size: 14cqw; line-height: 1; white-space: nowrap; }
+  .glyph.is-on { opacity: 1; }
+  .hit[data-letter="p"], .glyph[data-for="p"] { left: 0.71%; top: 21.58%; width: 27%; height: 60.96%; }
+  .hit[data-letter="o"], .glyph[data-for="o"] { left: 30.19%; top: 27.74%; width: 11.44%; height: 28.42%; }
+  .hit[data-letter="l"], .glyph[data-for="l"] { left: 43.51%; top: 2.05%; width: 10.73%; height: 54.45%; }
+  .hit[data-letter="y"], .glyph[data-for="y"] { left: 50.24%; top: 19.52%; width: 13.8%; height: 78.42%; }
+  .hit[data-letter="g"], .glyph[data-for="g"] { left: 61.91%; top: 25%; width: 13.09%; height: 63.36%; }
+  .hit[data-letter="a"], .glyph[data-for="a"] { left: 75.59%; top: 27.74%; width: 9.55%; height: 29.79%; }
+  .hit[data-letter="m"], .glyph[data-for="m"] { left: 87.03%; top: 27.05%; width: 12.26%; height: 35.27%; }
   @media (max-width: 600px) { .mark { width: 80vw; } }
   .note {
     position: absolute; left: 27.5%; bottom: 1.6%; transform: translateX(-50%);
     white-space: nowrap; font: 400 3.5cqw/1 'Inter Tight', system-ui, sans-serif;
-    text-transform: uppercase; color: #fff;
-    text-shadow: 0 0 18px rgba(0,0,0,.8);
+    text-transform: uppercase; color: #000;
     opacity: 0; animation: note-in 1.6s 1.3s ease forwards;
   }
   @keyframes note-in { from { opacity: 0; filter: blur(6px); } to { opacity: 1; filter: none; } }
@@ -88,8 +75,6 @@
 </style>
 </head>
 <body>
-<canvas id="gl" aria-hidden="true"></canvas>
-<div id="fade"></div>
 <main>
   <div class="mark">
     <h1>
@@ -102,14 +87,14 @@
       <span class="letter" data-letter="a" style="--m:url(assets/letters/a.png)" aria-hidden="true"></span>
       <span class="letter" data-letter="m" style="--m:url(assets/letters/m.png)" aria-hidden="true"></span>
     </h1>
-    <!-- Clips: P Fahne · o Rettungsring · l Trinkhalm · y Steinschleuder · g Büroklammer · a Verkehrshütchen · m Krone -->
-    <canvas class="morph" data-for="p" aria-hidden="true"></canvas>
-    <canvas class="morph" data-for="o" aria-hidden="true"></canvas>
-    <canvas class="morph" data-for="l" aria-hidden="true"></canvas>
-    <canvas class="morph" data-for="y" aria-hidden="true"></canvas>
-    <canvas class="morph" data-for="g" aria-hidden="true"></canvas>
-    <canvas class="morph" data-for="a" aria-hidden="true"></canvas>
-    <canvas class="morph" data-for="m" aria-hidden="true"></canvas>
+    <!-- Zeichen für den Schriftwechsel (Schrift wird per JS gesetzt) -->
+    <span class="glyph" data-for="p" aria-hidden="true">p</span>
+    <span class="glyph" data-for="o" aria-hidden="true">o</span>
+    <span class="glyph" data-for="l" aria-hidden="true">l</span>
+    <span class="glyph" data-for="y" aria-hidden="true">y</span>
+    <span class="glyph" data-for="g" aria-hidden="true">g</span>
+    <span class="glyph" data-for="a" aria-hidden="true">a</span>
+    <span class="glyph" data-for="m" aria-hidden="true">m</span>
     <!-- Hover-Flächen; y zuerst, damit l und g in den Überlappungen oben liegen -->
     <span class="hit" data-letter="p"></span>
     <span class="hit" data-letter="o"></span>
@@ -125,288 +110,40 @@
 
 <script>
 /* ============================================================
-   Hintergrund: GetLayers-Verlauf "Airlight" (Unlicense), sehr dunkel eingefärbt.
-   Vier Bergkämme staffeln sich in den Dunst; die Lichtquelle sitzt am Cursor,
-   die Kämme verschieben sich mit der Maus leicht gegeneinander (Parallaxe).
-   Ohne Maus (Handy) bleibt er bis auf ein kaum merkliches Driften ruhig.
+   Buchstaben-Hover: Jeder Buchstabe von "polygam" wechselt bei Mouseover
+   (bzw. Antippen) in eine zufällige Schriftart und springt beim Verlassen
+   zurück zur Handschrift.
 ============================================================ */
-const CONFIG = {
-  bgColor:          '#0b0c0e',
-  colorA:           '#0e0f12',
-  colorB:           '#1b1d22',
-  colorC:           '#343841',
-  colorD:           '#6d7380',   // hellster Ton, nur im Lichtkegel am Cursor erreicht
-  scale:            1,
-  speed:            0.33,
-  ridgeScale:       0.85,
-  relief:           0.22,
-  baseH:            0.1,
-  step:             0.17,
-  softEdge:         0.006,
-  roughness:        0.55,
-  lacunarity:       2.1,
-  haze:             0.8,
-  ridgeDark:        0.62,
-  skyBase:          0.3,
-  horizon:          0.35,
-  sunR:             0.42,      // Lichtkegel am Cursor
-  sun:              0.5,
-  rimW:             0.016,
-  rim:              0.35,
-  exposure:         1,
-  contrast:         1.05,
-  midpoint:         0.5,
-  glow:             0.05,
-  sink:             0.3,
-  grain:            0,
-  grainAnim:        0,
-  dither:           1.2,       // gegen Streifenbildung im dunklen Verlauf
-  vignette:         0.22,
-  sway:             0.6,       // wie stark die Kämme der Maus folgen
-  drift:            0.015,     // Eigenbewegung ohne Maus
-  pointerRadius:    0.4,
-  pointerStrength:  0.3,
-  pointerLift:      0.08,
-  parallax:         0.001,
-  maxDpr:           1,
-}
+const FONTS = [
+  "'Playfair Display'", "'Space Mono'", "'Bebas Neue'", "'Pacifico'", "'Abril Fatface'",
+  "'Lobster'", "'Roboto Slab'", "'Righteous'", "'Permanent Marker'", "'Unbounded'",
+  "'Caveat'", "'DM Serif Display'", "'Press Start 2P'", "'Archivo Black'", "Georgia", "'Courier New'",
+]
+const WEIGHTS = { "'Playfair Display'": 700, "'Space Mono'": 700, "'Roboto Slab'": 800, "'Unbounded'": 800, "'Caveat'": 700 }
+// Schriften vorab laden, damit beim ersten Hover nichts nachspringt
+FONTS.forEach(f => document.fonts && document.fonts.load(`${WEIGHTS[f] || 400} 40px ${f}`, 'polygam').catch(() => {}))
 
-const fadeEl = document.getElementById('fade')
-const canvas = document.getElementById('gl')
-const gl = canvas.getContext('webgl2', { alpha: false, antialias: false, depth: false, stencil: false, powerPreference: 'high-performance' })
-
-if (!gl) {
-  canvas.remove(); fadeEl.style.opacity = 0          // CSS-Verlauf bleibt stehen
-} else {
-
-const hexToVec3 = hex => { const n = parseInt(hex.slice(1), 16); return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255] }
-
-const VERT = `#version 300 es
-void main() {
-  vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
-  gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
-}`
-
-const FRAG = `#version 300 es
-precision highp float;
-out vec4 fragColor;
-
-uniform vec2  iResolution;
-uniform float iTime;
-uniform vec2  iMouse;
-uniform vec2  iLag;
-uniform float iEnergy;
-uniform float iIntro;
-
-uniform vec3  uBgColor, uColorA, uColorB, uColorC, uColorD;
-uniform float uScale, uSpeed, uRidgeScale, uRelief, uBaseH, uStep, uSoftEdge, uRoughness, uLacunarity;
-uniform float uHaze, uRidgeDark, uSkyBase, uHorizon, uSunR, uSun, uRimW, uRim, uExposure, uContrast;
-uniform float uMidpoint, uGlow, uSink, uGrain, uGrainAnim, uDither, uVignette, uSway, uDrift, uPointerRadius;
-uniform float uPointerStrength, uPointerLift, uParallax;
-
-vec2 hash2(vec2 p) {
-  p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
-  return -1.0 + 2.0 * fract(sin(p) * 43758.5453123);
-}
-float snoise(vec2 p) {
-  const float K1 = 0.366025404, K2 = 0.211324865;
-  vec2 i = floor(p + (p.x + p.y) * K1);
-  vec2 a = p - i + (i.x + i.y) * K2;
-  float m = step(a.y, a.x);
-  vec2 o = vec2(m, 1.0 - m);
-  vec2 b = a - o + K2;
-  vec2 c = a - 1.0 + 2.0 * K2;
-  vec3 h = max(0.5 - vec3(dot(a, a), dot(b, b), dot(c, c)), 0.0);
-  vec3 n = h * h * h * h * vec3(dot(a, hash2(i)), dot(b, hash2(i + o)), dot(c, hash2(i + 1.0)));
-  return dot(n, vec3(70.0));
-}
-#define OCT3 3
-float fbm3(vec2 p, float gain, float lac) {
-  float v = 0.0, amp = 0.5;
-  for (int i = 0; i < OCT3; i++) { v += amp * snoise(p); p *= lac; amp *= gain; }
-  return v;
-}
-vec3 ramp4(float t) {
-  vec3 c = mix(uColorA, uColorB, smoothstep(0.00, 0.36, t));
-  c = mix(c, uColorC, smoothstep(0.32, 0.70, t));
-  c = mix(c, uColorD, smoothstep(0.66, 1.00, t));
-  return c;
-}
-float triDither(vec2 fc) {
-  float a = fract(sin(dot(fc, vec2(12.9898, 78.233))) * 43758.5453);
-  float b = fract(sin(dot(fc + 17.0, vec2(12.9898, 78.233))) * 43758.5453);
-  return (a + b - 1.0) / 255.0;
-}
-#define RIDGES 4
-
-void main() {
-  vec2 uv = (gl_FragCoord.xy - 0.5 * iResolution) / iResolution.y;
-  float t = iTime * uSpeed;
-  vec2 p = uv * uScale;
-  vec2 s = iMouse;
-
-  float sunNear = exp(-dot(uv - s, uv - s) / max(1e-4, uSunR * uSunR));
-  float air = uSkyBase + sunNear * uSun + (0.5 - uv.y) * uHorizon;
-  float scene = air;
-
-  for (int i = 0; i < RIDGES; i++) {
-    float fi = float(i);
-    float z = 1.0 - fi / float(RIDGES);
-    float fq = uRidgeScale * (0.7 + 0.7 * fi);
-    float shift = iLag.x * uSway * (1.0 - z) * iIntro + t * uDrift * (1.0 + fi);
-    float h = uBaseH - fi * uStep
-            + fbm3(vec2((p.x + shift) * fq + fi * 7.3, fi * 2.1), uRoughness, uLacunarity) * uRelief * (0.7 + 0.6 * fi);
-    float mask = smoothstep(h + uSoftEdge, h - uSoftEdge, uv.y);
-    float tone = mix(uRidgeDark * (0.55 + 0.45 * (1.0 - z)), air, z * uHaze);
-    scene = mix(scene, tone, mask);
-    scene += exp(-abs(uv.y - h) / max(1e-4, uRimW)) * uRim * sunNear * (0.4 + 0.6 * (1.0 - z));
-  }
-
-  vec2 dh = uv - iMouse;
-  scene += exp(-dot(dh, dh) / max(1e-4, uPointerRadius * uPointerRadius)) * uPointerLift * iIntro
-         * mix(1.0, 0.6 + 0.4 * iEnergy, uPointerStrength);
-
-  // dunkle Palette: Ramp folgt der Helligkeit (Dunst/Licht hell, Kämme dunkel)
-  float lit = 1.0 - exp(-scene * uExposure);
-  float g = clamp((lit - uMidpoint) * uContrast + 0.5, 0.0, 1.0);
-  vec3 col = ramp4(g);
-  col += uColorD * uGlow * pow(g, 6.0);
-  col = mix(uBgColor, col, smoothstep(0.0, max(0.01, uSink), g) * 0.90 + 0.10);
-  col *= 1.0 - uVignette * dot(uv, uv);
-  col += triDither(gl_FragCoord.xy) * uDither;
-  fragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
-}`
-
-const compile = (type, src) => {
-  const sh = gl.createShader(type); gl.shaderSource(sh, src); gl.compileShader(sh)
-  if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh))
-  return sh
-}
-const program = gl.createProgram()
-gl.attachShader(program, compile(gl.VERTEX_SHADER, VERT))
-gl.attachShader(program, compile(gl.FRAGMENT_SHADER, FRAG))
-gl.linkProgram(program)
-if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program))
-gl.useProgram(program)
-gl.bindVertexArray(gl.createVertexArray())
-
-const LOC = {}
-const loc = n => (n in LOC ? LOC[n] : (LOC[n] = gl.getUniformLocation(program, n)))
-const u1f = (n, v) => gl.uniform1f(loc(n), v)
-const u2f = (n, x, y) => gl.uniform2f(loc(n), x, y)
-
-// CONFIG-Schlüssel -> Uniform (colorA -> uColorA)
-for (const k in CONFIG) {
-  if (k === 'maxDpr') continue
-  const n = 'u' + k[0].toUpperCase() + k.slice(1)
-  if (typeof CONFIG[k] === 'string') { const c = hexToVec3(CONFIG[k]); gl.uniform3f(loc(n), c[0], c[1], c[2]) } else u1f(n, CONFIG[k])
-}
-
-function resize() {
-  const dpr = Math.min(devicePixelRatio || 1, CONFIG.maxDpr)
-  const w = Math.max(1, Math.round(innerWidth * dpr)), h = Math.max(1, Math.round(innerHeight * dpr))
-  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h }
-  gl.viewport(0, 0, w, h)
-  u2f('iResolution', w, h)
-}
-let resizeQueued = false
-addEventListener('resize', () => {
-  if (resizeQueued) return
-  resizeQueued = true
-  requestAnimationFrame(() => { resizeQueued = false; resize() })
-}, { passive: true })
-resize()
-
-/* Zeiger: Kopf + Nachläufer + "Energie" der Bewegung (aus Airlight übernommen) */
-const P = { tx: 0, ty: 0, hx: 0, hy: 0, mx: 0, my: 0, sx: 0, sy: 0, e: 0 }
-let seeded = false
-const aim = e => {
-  P.tx = (e.clientX / innerWidth - 0.5) * (innerWidth / innerHeight)
-  P.ty = 0.5 - e.clientY / innerHeight
-  if (!seeded) { seeded = true; P.hx = P.mx = P.sx = P.tx; P.hy = P.my = P.sy = P.ty }
-}
-addEventListener('pointermove', aim, { passive: true })
-addEventListener('pointerdown', aim, { passive: true })
-
-let prevT = performance.now(), clock = 0, intro = 0
-function frame(now) {
-  requestAnimationFrame(frame)
-  const raw = now - prevT; prevT = now
-  if (document.hidden) return
-  const dt = raw > 50 ? 0.05 : raw < 0.001 ? 0.001 : raw * 0.001
-  clock += dt
-  const kh = 1 - Math.exp(-6.0 * dt), km = 1 - Math.exp(-2.6 * dt), ks = 1 - Math.exp(-1.25 * dt)
-  P.hx += (P.tx - P.hx) * kh; P.hy += (P.ty - P.hy) * kh
-  P.mx += (P.hx - P.mx) * km; P.my += (P.hy - P.my) * km
-  P.sx += (P.mx - P.sx) * ks; P.sy += (P.my - P.sy) * ks
-  const ex = P.hx - P.sx, ey = P.hy - P.sy
-  const want = Math.min(Math.sqrt(ex * ex + ey * ey) * 5.5, 1)
-  P.e += (want - P.e) * (1 - Math.exp(-(want > P.e ? 5.0 : 0.40) * dt))
-  intro += ((seeded ? 1 : 0) - intro) * (1 - Math.exp(-3.0 * dt))
-
-  u1f('iTime', clock); u1f('iEnergy', P.e); u1f('iIntro', intro)
-  u2f('iMouse', P.hx, P.hy); u2f('iLag', P.mx, P.my)
-  gl.drawArrays(gl.TRIANGLES, 0, 3)
-}
-gl.drawArrays(gl.TRIANGLES, 0, 3)     // erst zeichnen, dann einblenden
-fadeEl.style.opacity = 0
-requestAnimationFrame(frame)
-}
-</script>
-
-<script>
-/* ============================================================
-   Buchstaben-Verwandlung: Hover (bzw. Antippen) spielt den Clip
-   des Buchstabens deckungsgleich über dem Original ab.
-   Der Clip hat schwarzen Grund; beim Zeichnen ins Canvas wird
-   Helligkeit zu Deckkraft (Schwarz = transparent), damit das
-   Objekt sauber auf dem Verlauf steht.
-============================================================ */
-const MORPH = {
-  start: 0,      // Clips sind bereits zugeschnitten (Bild 0 = flacher weißer Buchstabe)
-  size: 480,     // Rechenauflösung des Canvas (= Clip-Auflösung)
-}
-document.querySelectorAll('.morph').forEach(cv => {
-  const key = cv.dataset.for
+document.querySelectorAll('.hit').forEach(hit => {
+  const key = hit.dataset.letter
   const letter = document.querySelector(`.letter[data-letter="${key}"]`)
-  const hit = document.querySelector(`.hit[data-letter="${key}"]`)
-  const v = document.createElement('video')
-  Object.assign(v, { src: `assets/letters/${key}.mp4`, muted: true, playsInline: true, preload: 'auto' })
-  cv.width = cv.height = MORPH.size
-  const ctx = cv.getContext('2d', { willReadFrequently: true })
-  let active = false, raf = 0
-
-  function draw() {
-    ctx.drawImage(v, 0, 0, MORPH.size, MORPH.size)
-    const img = ctx.getImageData(0, 0, MORPH.size, MORPH.size), d = img.data
-    for (let i = 0; i < d.length; i += 4) {
-      const m = Math.max(d[i], d[i + 1], d[i + 2])
-      if (m < 10) { d[i + 3] = 0; continue }               // Kompressionsrauschen im Schwarz wegschneiden
-      const k = 255 / m
-      d[i] *= k; d[i + 1] *= k; d[i + 2] *= k; d[i + 3] = m  // Helligkeit -> Deckkraft
-    }
-    ctx.putImageData(img, 0, 0)
-  }
-  function loop() { draw(); raf = requestAnimationFrame(loop) }
+  const glyph = document.querySelector(`.glyph[data-for="${key}"]`)
+  let current = ''
 
   function enter() {
-    if (active) return
-    active = true
-    v.currentTime = MORPH.start
-    v.play().catch(() => {})
-    cv.classList.add('is-on'); letter.classList.add('is-morphing')
-    cancelAnimationFrame(raf); loop()
+    let f
+    do { f = FONTS[Math.floor(Math.random() * FONTS.length)] } while (f === current)
+    current = f
+    glyph.style.fontFamily = f
+    glyph.style.fontWeight = WEIGHTS[f] || 400
+    glyph.classList.add('is-on'); letter.classList.add('is-morphing')
   }
   function leave() {
-    if (!active) return
-    active = false
-    cv.classList.remove('is-on'); letter.classList.remove('is-morphing')
-    setTimeout(() => { if (!active) { v.pause(); cancelAnimationFrame(raf) } }, 500)
+    glyph.classList.remove('is-on'); letter.classList.remove('is-morphing')
   }
   hit.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') enter() })
   hit.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') leave() })
-  // Touch: Antippen schaltet um (Maus nutzt Hover). Am Clipende bleibt das Kristall-Bild stehen.
-  hit.addEventListener('pointerup', e => { if (e.pointerType !== 'mouse') active ? leave() : enter() })
+  // Touch: jedes Antippen würfelt eine neue Schrift
+  hit.addEventListener('pointerup', e => { if (e.pointerType !== 'mouse') enter() })
 })
 </script>
 </body>
