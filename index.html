@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex, nofollow"><!-- DEV: vor dem Go-live entfernen -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400&family=JetBrains+Mono:wght@400&family=Playfair+Display:wght@700&family=Space+Mono:wght@700&family=Bebas+Neue&family=Pacifico&family=Abril+Fatface&family=Lobster&family=Roboto+Slab:wght@800&family=Righteous&family=Permanent+Marker&family=Unbounded:wght@800&family=Caveat:wght@700&family=DM+Serif+Display&family=Press+Start+2P&family=Archivo+Black&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400&family=JetBrains+Mono:wght@400&family=Inter:wght@100;400;700;900&family=Lora:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root { --fg: #000; --muted: rgba(0,0,0,.55); --bg: #fff; }
   html, body { margin: 0; height: 100%; color: var(--fg); overflow: hidden; background: var(--bg); }
@@ -40,23 +40,30 @@
      nur ein Buchstabe sichtbar). .logo bleibt als unsichtbarer Platzhalter für die Größe.
      .hit = Hover-Fläche (Rechteck um den Buchstaben, % der Logo-Breite/-Höhe 848×292).
      Beim Hover wird die Handschrift-Ebene ausgeblendet und stattdessen ein echtes
-     Textzeichen (.glyph) in einer zufälligen Schrift in der Hover-Fläche zentriert. */
+     Textzeichen (.glyph) horizontal in der Hover-Fläche zentriert, alle auf einer gemeinsamen Grundlinie. */
   h1 { position: relative; }
   .logo { background: none; -webkit-mask: none; mask: none; }
   .letter { position: absolute; inset: 0; background: #000;
     -webkit-mask: var(--m) center / contain no-repeat; mask: var(--m) center / contain no-repeat; }
   .letter.is-morphing { opacity: 0; }
   .hit { position: absolute; pointer-events: auto; }
-  .glyph { position: absolute; display: flex; align-items: center; justify-content: center;
-    pointer-events: none; opacity: 0; color: #000; font-size: 14cqw; line-height: 1; white-space: nowrap; }
+  .glyph { position: absolute; text-align: center; pointer-events: none; opacity: 0; color: #000;
+    line-height: 1; white-space: nowrap; font-size: 15cqw; }
   .glyph.is-on { opacity: 1; }
-  .hit[data-letter="p"], .glyph[data-for="p"] { left: 0.71%; top: 21.58%; width: 27%; height: 60.96%; }
-  .hit[data-letter="o"], .glyph[data-for="o"] { left: 30.19%; top: 27.74%; width: 11.44%; height: 28.42%; }
-  .hit[data-letter="l"], .glyph[data-for="l"] { left: 43.51%; top: 2.05%; width: 10.73%; height: 54.45%; }
-  .hit[data-letter="y"], .glyph[data-for="y"] { left: 50.24%; top: 19.52%; width: 13.8%; height: 78.42%; }
-  .hit[data-letter="g"], .glyph[data-for="g"] { left: 61.91%; top: 25%; width: 13.09%; height: 63.36%; }
-  .hit[data-letter="a"], .glyph[data-for="a"] { left: 75.59%; top: 27.74%; width: 9.55%; height: 29.79%; }
-  .hit[data-letter="m"], .glyph[data-for="m"] { left: 87.03%; top: 27.05%; width: 12.26%; height: 35.27%; }
+  .hit[data-letter="p"] { left: 0.71%; top: 21.58%; width: 27%; height: 60.96%; }
+  .glyph[data-for="p"] { left: 0.71%; width: 27%; }
+  .hit[data-letter="o"] { left: 30.19%; top: 27.74%; width: 11.44%; height: 28.42%; }
+  .glyph[data-for="o"] { left: 30.19%; width: 11.44%; }
+  .hit[data-letter="l"] { left: 43.51%; top: 2.05%; width: 10.73%; height: 54.45%; }
+  .glyph[data-for="l"] { left: 43.51%; width: 10.73%; }
+  .hit[data-letter="y"] { left: 50.24%; top: 19.52%; width: 13.8%; height: 78.42%; }
+  .glyph[data-for="y"] { left: 50.24%; width: 13.8%; }
+  .hit[data-letter="g"] { left: 61.91%; top: 25%; width: 13.09%; height: 63.36%; }
+  .glyph[data-for="g"] { left: 61.91%; width: 13.09%; }
+  .hit[data-letter="a"] { left: 75.59%; top: 27.74%; width: 9.55%; height: 29.79%; }
+  .glyph[data-for="a"] { left: 75.59%; width: 9.55%; }
+  .hit[data-letter="m"] { left: 87.03%; top: 27.05%; width: 12.26%; height: 35.27%; }
+  .glyph[data-for="m"] { left: 87.03%; width: 12.26%; }
   @media (max-width: 600px) { .mark { width: 80vw; } }
   .note {
     position: absolute; left: 27.5%; bottom: 1.6%; transform: translateX(-50%);
@@ -111,30 +118,45 @@
 <script>
 /* ============================================================
    Buchstaben-Hover: Jeder Buchstabe von "polygam" wechselt bei Mouseover
-   (bzw. Antippen) in eine zufällige Schriftart und springt beim Verlassen
-   zurück zur Handschrift.
+   (bzw. Antippen) in einen zufälligen Stil aus Inter + Lora, mit zufälliger
+   Groß-/Kleinschreibung und Größe, und springt beim Verlassen zurück zur
+   Handschrift. Die Zeichen bleiben in ihrem Slot und stehen auf einer
+   gemeinsamen Grundlinie.
 ============================================================ */
-const FONTS = [
-  "'Playfair Display'", "'Space Mono'", "'Bebas Neue'", "'Pacifico'", "'Abril Fatface'",
-  "'Lobster'", "'Roboto Slab'", "'Righteous'", "'Permanent Marker'", "'Unbounded'",
-  "'Caveat'", "'DM Serif Display'", "'Press Start 2P'", "'Archivo Black'", "Georgia", "'Courier New'",
+const STYLES = [
+  ['Inter', 100], ['Inter', 400], ['Inter', 700], ['Inter', 900],
+  ['Lora', 400], ['Lora', 500], ['Lora', 600], ['Lora', 700],
 ]
-const WEIGHTS = { "'Playfair Display'": 700, "'Space Mono'": 700, "'Roboto Slab'": 800, "'Unbounded'": 800, "'Caveat'": 700 }
+const CAPS_RATIO = 0.45
+const SIZE_JITTER = 0.15
+const BASELINE = 0.57        // Grundlinie der Handschrift in % der Logo-Höhe (Unterkante von o/a)
+const BASE_SIZE = 0.15       // Schriftgröße in Anteilen der Logo-Breite (entspricht 15cqw)
+
 // Schriften vorab laden, damit beim ersten Hover nichts nachspringt
-FONTS.forEach(f => document.fonts && document.fonts.load(`${WEIGHTS[f] || 400} 40px ${f}`, 'polygam').catch(() => {}))
+STYLES.forEach(([f, w]) => document.fonts && document.fonts.load(`${w} 40px ${f}`, 'polygamPOLYGAM').catch(() => {}))
+
+const mark = document.querySelector('.mark'), logo = document.querySelector('.logo')
+const metricsCtx = document.createElement('canvas').getContext('2d')
 
 document.querySelectorAll('.hit').forEach(hit => {
   const key = hit.dataset.letter
   const letter = document.querySelector(`.letter[data-letter="${key}"]`)
   const glyph = document.querySelector(`.glyph[data-for="${key}"]`)
-  let current = ''
+  let current = -1
 
   function enter() {
-    let f
-    do { f = FONTS[Math.floor(Math.random() * FONTS.length)] } while (f === current)
-    current = f
-    glyph.style.fontFamily = f
-    glyph.style.fontWeight = WEIGHTS[f] || 400
+    let i
+    do { i = Math.floor(Math.random() * STYLES.length) } while (i === current)
+    current = i
+    const [family, weight] = STYLES[i]
+    const size = mark.clientWidth * BASE_SIZE * (1 + (Math.random() * 2 - 1) * SIZE_JITTER)
+    glyph.textContent = Math.random() < CAPS_RATIO ? key.toUpperCase() : key
+    Object.assign(glyph.style, { fontFamily: `'${family}', serif`, fontWeight: weight, fontSize: size + 'px' })
+    // Grundlinie: bei line-height 1 liegt sie size/2 + (Ascent - Descent)/2 unter der Oberkante
+    metricsCtx.font = `${weight} ${size}px '${family}'`
+    const m = metricsCtx.measureText(glyph.textContent)
+    const off = size / 2 + (m.fontBoundingBoxAscent - m.fontBoundingBoxDescent) / 2
+    glyph.style.top = logo.clientHeight * BASELINE - off + 'px'
     glyph.classList.add('is-on'); letter.classList.add('is-morphing')
   }
   function leave() {
@@ -142,7 +164,7 @@ document.querySelectorAll('.hit').forEach(hit => {
   }
   hit.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') enter() })
   hit.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') leave() })
-  // Touch: jedes Antippen würfelt eine neue Schrift
+  // Touch: jedes Antippen würfelt neu
   hit.addEventListener('pointerup', e => { if (e.pointerType !== 'mouse') enter() })
 })
 </script>
