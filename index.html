@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex, nofollow"><!-- DEV: vor dem Go-live entfernen -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400&family=JetBrains+Mono:wght@400&family=Inter:wght@100;400;700;900&family=Lora:wght@400;500;600;700&family=Playfair+Display:wght@400;700;900&family=Space+Grotesk:wght@300;400;700&family=IBM+Plex+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;400;700;900&family=Lora:wght@400;500;600;700&family=Playfair+Display:wght@400;700;900&family=Space+Grotesk:wght@300;400;700&family=IBM+Plex+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root { --fg: #000; --muted: rgba(0,0,0,.55); --bg: #fff; }
   html, body { margin: 0; height: 100%; color: var(--fg); overflow: hidden; background: var(--bg); }
@@ -17,7 +17,12 @@
     position: fixed; inset: 0; display: grid; place-items: center; pointer-events: none;
     padding: 0 16px; text-align: center;
   }
-  .soon { position: fixed; left: 0; right: 0; bottom: clamp(24px, 6vh, 56px); text-align: center; pointer-events: none; }
+  .soon { position: fixed; left: 0; right: 0; bottom: clamp(24px, 6vh, 56px); text-align: center; pointer-events: none;
+    display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .ig { display: block; width: 22px; height: 22px; color: #000; pointer-events: auto;
+    opacity: 0; animation: in 1.6s 1.6s ease forwards; transition: opacity .2s ease; }
+  .ig:hover, .ig:focus-visible { opacity: .55 !important; }
+  .ig svg { display: block; width: 100%; height: 100%; }
   h1 {
     margin: 0; line-height: 0;
     opacity: 0; animation: in 1.8s .9s cubic-bezier(.2,.7,.2,1) forwards;
@@ -29,10 +34,8 @@
     -webkit-mask: url(assets/polygam-schriftzug.png) center / contain no-repeat;
             mask: url(assets/polygam-schriftzug.png) center / contain no-repeat;
   }
-  /* Hinweis: Schriftzug ist (noch) nicht das finale Logo.
-     Unterkante auf Höhe des y-Strichendes (y≈285/292), horizontal mittig zwischen
-     P-Abstrich (x≈41/848) und y-Abstrich (x≈426/848) -> Mitte x≈234 = 27,5 %.
-     Größe in cqw, damit er mit dem Logo skaliert. */
+  /* Hinweis: Schriftzug ist (noch) nicht das finale Logo. Mittig unter dem Logo;
+     Größe in cqw, damit er mit dem Logo skaliert (mit Untergrenze für kleine Displays). */
   .mark { position: relative; container-type: inline-size; width: clamp(240px, 52vw, 720px); }
 
   /* ---- Buchstaben-Hover: zufällige Schrift ----
@@ -66,19 +69,19 @@
   .glyph[data-for="m"] { left: 87.03%; width: 12.26%; }
   @media (max-width: 600px) { .mark { width: 80vw; } }
   .note {
-    position: absolute; left: 27.5%; bottom: 1.6%; transform: translateX(-50%);
-    white-space: nowrap; font: 400 3.5cqw/1 'Inter Tight', system-ui, sans-serif;
+    position: absolute; left: 50%; top: 100%; margin-top: 1.2cqw; transform: translateX(-50%);
+    white-space: nowrap; font: 400 clamp(14px, 3.5cqw, 26px)/1 'Times New Roman', Times, serif;
     text-transform: uppercase; color: #000;
     opacity: 0; animation: note-in 1.6s 1.3s ease forwards;
   }
   @keyframes note-in { from { opacity: 0; filter: blur(6px); } to { opacity: 1; filter: none; } }
   p {
-    margin: 0; font: 400 clamp(.66rem, 1.4vw, .8rem)/1 'JetBrains Mono', ui-monospace, monospace;
+    margin: 0; font: 400 clamp(.6rem, 1.2vw, .72rem)/1 'Times New Roman', Times, serif;
     letter-spacing: .45em; text-transform: uppercase; color: var(--muted); padding-left: .45em;
     opacity: 0; animation: in 1.6s 1.6s ease forwards;
   }
   @keyframes in { from { opacity: 0; transform: translateY(8px); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
-  @media (prefers-reduced-motion: reduce) { h1, p, .note { animation-duration: .01s; animation-delay: 0s; } }
+  @media (prefers-reduced-motion: reduce) { h1, p, .note, .ig { animation-duration: .01s; animation-delay: 0s; } }
 </style>
 </head>
 <body>
@@ -113,7 +116,14 @@
     <div class="note">(Not the logo)</div>
   </div>
 </main>
-<p class="soon">is coming</p>
+<div class="soon">
+  <a class="ig" href="https://www.instagram.com/polygam.agency/" target="_blank" rel="noopener" aria-label="polygam.agency auf Instagram">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.3" cy="6.7" r=".6" fill="currentColor"/>
+    </svg>
+  </a>
+  <p>is coming</p>
+</div>
 
 <script>
 /* ============================================================
